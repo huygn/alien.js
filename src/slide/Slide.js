@@ -67,10 +67,10 @@ class Slide extends Component {
 
         function addListeners() {
             Stage.bind('wheel', scroll);
-            Mouse.input.events.add(Interaction.START, down);
-            Mouse.input.events.add(Interaction.DRAG, drag);
-            Stage.events.add(Events.KEYBOARD_DOWN, keyPress);
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Mouse.input, Interaction.START, down);
+            self.events.add(Mouse.input, Interaction.DRAG, drag);
+            self.events.add(Events.KEYBOARD_DOWN, keyPress);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -147,7 +147,7 @@ class Slide extends Component {
                 self.direction.y = self.delta.y < 0 ? -1 : 1;
                 event.index = self.index;
                 event.direction = self.direction;
-                self.events.fire(Events.UPDATE, event);
+                self.events.fire(Events.UPDATE, event, true);
             }
         }
 

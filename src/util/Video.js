@@ -60,12 +60,12 @@ class Video extends Component {
                 tick++;
                 if (tick > 30 && !buffering) {
                     buffering = true;
-                    self.events.fire(Events.ERROR);
+                    self.events.fire(Events.ERROR, null, true);
                 }
             } else {
                 tick = 0;
                 if (buffering) {
-                    self.events.fire(Events.READY);
+                    self.events.fire(Events.READY, null, true);
                     buffering = false;
                 }
             }
@@ -73,13 +73,13 @@ class Video extends Component {
             if (self.element.currentTime >= (self.duration || self.element.duration) - 0.001) {
                 if (!self.loop) {
                     if (!forceRender) self.stopRender(step);
-                    self.events.fire(Events.COMPLETE);
+                    self.events.fire(Events.COMPLETE, null, true);
                 }
             }
             event.time = self.element.currentTime;
             event.duration = self.element.duration;
             event.loaded = self.loaded;
-            self.events.fire(Events.UPDATE, event);
+            self.events.fire(Events.UPDATE, event, true);
         }
 
         function checkReady() {
@@ -98,7 +98,7 @@ class Video extends Component {
             }
             if (self.buffered) {
                 self.stopRender(checkReady);
-                self.events.fire(Events.READY);
+                self.events.fire(Events.READY, null, true);
             }
         }
 
@@ -111,7 +111,7 @@ class Video extends Component {
             self.loaded.start = bf.start(range) / self.element.duration;
             self.loaded.end = bf.end(range) / self.element.duration;
             self.loaded.percent = self.loaded.end - self.loaded.start;
-            self.events.fire(Events.PROGRESS, self.loaded);
+            self.events.fire(Events.PROGRESS, self.loaded, true);
         }
 
         this.play = () => {

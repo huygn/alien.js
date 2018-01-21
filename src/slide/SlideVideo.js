@@ -50,7 +50,7 @@ class SlideVideo extends Component {
         }
 
         function error() {
-            self.events.fire(Events.ERROR);
+            self.events.fire(Events.ERROR, null, true);
         }
 
         function ready() {
@@ -61,7 +61,7 @@ class SlideVideo extends Component {
 
         function playing() {
             self.playing = true;
-            self.events.fire(Events.READY);
+            self.events.fire(Events.READY, null, true);
         }
 
         function pause() {

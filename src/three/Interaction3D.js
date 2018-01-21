@@ -83,7 +83,7 @@ class Interaction3D {
         function triggerHover(action, mesh) {
             event.action = action;
             event.mesh = mesh;
-            self.events.fire(Interaction3D.HOVER, event);
+            self.events.fire(Interaction3D.HOVER, event, true);
             const i = self.meshes.indexOf(hoverTarget);
             if (self.meshCallbacks[i].hoverCallback) self.meshCallbacks[i].hoverCallback(event);
         }
@@ -91,7 +91,7 @@ class Interaction3D {
         function triggerClick(mesh) {
             event.action = 'click';
             event.mesh = mesh;
-            self.events.fire(Interaction3D.CLICK, event);
+            self.events.fire(Interaction3D.CLICK, event, true);
             const i = self.meshes.indexOf(clickTarget);
             if (self.meshCallbacks[i].clickCallback) self.meshCallbacks[i].clickCallback(event);
         }

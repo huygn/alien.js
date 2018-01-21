@@ -25,12 +25,12 @@ class SlideLoader extends Component {
 
         function slideLoaded() {
             self.percent = ++loaded / self.list.length;
-            self.events.fire(Events.PROGRESS, { percent: self.percent });
+            self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
             if (loaded === self.list.length) complete();
         }
 
         function complete() {
-            self.events.fire(Events.COMPLETE);
+            self.events.fire(Events.COMPLETE, null, true);
             if (callback) callback();
         }
     }

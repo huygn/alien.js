@@ -88,7 +88,7 @@ class UIAbout extends Interface {
         }
 
         function addListeners() {
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -216,8 +216,8 @@ class UIFooter extends Interface {
         }
 
         function addListeners() {
-            source.events.add(Events.CLICK, sourceClick);
-            about.events.add(Events.CLICK, aboutClick);
+            self.events.add(source, Events.CLICK, sourceClick);
+            self.events.add(about, Events.CLICK, aboutClick);
         }
 
         function sourceClick() {
@@ -226,7 +226,7 @@ class UIFooter extends Interface {
         }
 
         function aboutClick() {
-            Stage.events.fire(Events.OPEN_ABOUT);
+            self.events.fire(Events.OPEN_ABOUT);
         }
     }
 }
@@ -264,8 +264,8 @@ class UI extends Interface {
         }
 
         function addListeners() {
-            Stage.events.add(Events.OPEN_ABOUT, openAbout);
-            Stage.events.add(Events.CLOSE_ABOUT, closeAbout);
+            self.events.add(Events.OPEN_ABOUT, openAbout);
+            self.events.add(Events.CLOSE_ABOUT, closeAbout);
         }
 
         function openAbout() {
@@ -323,9 +323,9 @@ class ColourBeam extends Component {
         }
 
         function addListeners() {
-            Stage.events.add(Events.RESIZE, resize);
-            Mouse.input.events.add(Interaction.START, down);
-            Mouse.input.events.add(Interaction.END, up);
+            self.events.add(Events.RESIZE, resize);
+            self.events.add(Mouse.input, Interaction.START, down);
+            self.events.add(Mouse.input, Interaction.END, up);
             up();
             resize();
         }
@@ -405,7 +405,7 @@ class World extends Component {
         }
 
         function addListeners() {
-            Mouse.input.events.add(Interaction.MOVE, move);
+            Stage.events.add(Mouse.input, Interaction.MOVE, move);
             Stage.events.add(Events.RESIZE, resize);
             resize();
         }
@@ -572,7 +572,7 @@ class Loader extends Interface {
 
         function initLoader() {
             loader = self.initClass(AssetLoader, Config.ASSETS);
-            loader.events.add(Events.PROGRESS, loadUpdate);
+            self.events.add(loader, Events.PROGRESS, loadUpdate);
         }
 
         function loadUpdate(e) {
@@ -589,15 +589,15 @@ class Loader extends Interface {
             number.tween({ opacity: 0 }, 200, 'easeOutSine', () => {
                 number.hide();
                 title.transform({ y: 10 }).css({ opacity: 0 }).tween({ y: 0, opacity: 1 }, 1000, 'easeOutQuart', 100);
-                Mouse.input.events.add(Interaction.CLICK, click);
+                self.events.add(Mouse.input, Interaction.CLICK, click);
                 self.delayedCall(() => swapTitle((Device.mobile ? 'Tap' : 'Click') + ' anywhere'), 7000);
                 self.delayedCall(() => swapTitle(Device.mobile ? 'Tap tap!' : 'Click!'), 14000);
             });
         }
 
         function click() {
-            Mouse.input.events.remove(Interaction.CLICK, click);
-            Stage.events.fire(Events.START);
+            self.events.remove(Mouse.input, Interaction.CLICK, click);
+            self.events.fire(Events.START);
             WebAudio.trigger('BassDrum');
         }
 
@@ -640,7 +640,7 @@ class Main {
         function initLoader() {
             FontLoader.loadFonts(['Lato']).then(() => {
                 loader = Stage.initClass(Loader);
-                loader.events.add(Events.COMPLETE, initWorld);
+                Stage.events.add(loader, Events.COMPLETE, initWorld);
             });
         }
 

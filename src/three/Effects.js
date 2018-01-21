@@ -8,7 +8,6 @@
 
 import { Events } from '../util/Events';
 import { Component } from '../util/Component';
-import { Stage } from '../view/Stage';
 import { Utils3D } from './Utils3D';
 
 class Effects extends Component {
@@ -38,7 +37,7 @@ class Effects extends Component {
         }
 
         function addListeners() {
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Events.RESIZE, resize);
         }
 
         function resize() {

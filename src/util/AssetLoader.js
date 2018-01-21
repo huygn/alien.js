@@ -52,12 +52,12 @@ class AssetLoader extends Component {
 
         function assetLoaded() {
             self.percent = ++loaded / total;
-            self.events.fire(Events.PROGRESS, { percent: self.percent });
+            self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
             if (loaded === total) complete();
         }
 
         function complete() {
-            self.events.fire(Events.COMPLETE);
+            self.events.fire(Events.COMPLETE, null, true);
             if (callback) callback();
         }
     }

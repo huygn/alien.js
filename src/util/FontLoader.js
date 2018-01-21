@@ -29,8 +29,8 @@ class FontLoader extends Component {
             const ready = () => {
                 element.destroy();
                 self.percent = 1;
-                self.events.fire(Events.PROGRESS, { percent: self.percent });
-                self.events.fire(Events.COMPLETE);
+                self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
+                self.events.fire(Events.COMPLETE, null, true);
                 if (callback) callback();
             };
             if (document.fonts && document.fonts.ready) document.fonts.ready.then(ready);

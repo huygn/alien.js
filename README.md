@@ -117,7 +117,7 @@ class CanvasLayer extends Interface {
         }
 
         function addListeners() {
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 

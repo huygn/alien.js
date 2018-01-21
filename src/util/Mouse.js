@@ -39,8 +39,8 @@ class Mouse {
 
         this.init = () => {
             this.input = new Interaction();
-            this.input.events.add(Interaction.START, update);
-            this.input.events.add(Interaction.MOVE, update);
+            Stage.events.add(this.input, Interaction.START, update);
+            Stage.events.add(this.input, Interaction.MOVE, update);
             update({
                 x: Stage.width / 2,
                 y: Stage.height / 2

@@ -69,7 +69,7 @@ class Interaction {
             self.delta.x = self.move.x = self.velocity.x = 0;
             self.delta.y = self.move.y = self.velocity.y = 0;
             distance = 0;
-            self.events.fire(Interaction.START, e);
+            self.events.fire(Interaction.START, e, true);
             timeDown = timeMove = Render.TIME;
         }
 
@@ -89,8 +89,8 @@ class Interaction {
             timeMove = Render.TIME;
             self.velocity.x = Math.abs(self.delta.x) / delta;
             self.velocity.y = Math.abs(self.delta.y) / delta;
-            self.events.fire(Interaction.MOVE, e);
-            if (self.isTouching) self.events.fire(Interaction.DRAG, e);
+            self.events.fire(Interaction.MOVE, e, true);
+            if (self.isTouching) self.events.fire(Interaction.DRAG, e, true);
         }
 
         function up(e) {
@@ -103,8 +103,8 @@ class Interaction {
                 self.delta.x = 0;
                 self.delta.y = 0;
             }
-            self.events.fire(Interaction.END, e);
-            if (distance < 20 && Render.TIME - timeDown < 2000) self.events.fire(Interaction.CLICK, e);
+            self.events.fire(Interaction.END, e, true);
+            if (distance < 20 && Render.TIME - timeDown < 2000) self.events.fire(Interaction.CLICK, e, true);
         }
 
         this.destroy = () => {

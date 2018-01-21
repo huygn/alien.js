@@ -46,18 +46,18 @@ class Main extends Interface {
 
         function initLoader() {
             loader = self.initClass(AssetLoader, Config.ASSETS);
-            loader.events.add(Events.COMPLETE, loadComplete);
+            self.events.add(loader, Events.COMPLETE, loadComplete);
         }
 
         function loadComplete() {
             alienkitty.bg('assets/alienkitty.svg');
             eyelid1.bg('assets/alienkitty_eyelid.svg');
             eyelid2.bg('assets/alienkitty_eyelid.svg');
-            Stage.events.fire(Events.COMPLETE);
+            self.events.fire(Events.COMPLETE);
         }
 
         function addListeners() {
-            Stage.events.add(Events.COMPLETE, complete);
+            self.events.add(Events.COMPLETE, complete);
         }
 
         function complete() {

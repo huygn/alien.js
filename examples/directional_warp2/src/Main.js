@@ -46,23 +46,18 @@ Events.SLIDE_CHANGE = 'slide_change';
 Assets.CORS = 'Anonymous';
 
 
-class Data extends StateDispatcher {
+class Data {
 
-    static instance() {
-        if (!this.singleton) this.singleton = new Data();
-        return this.singleton;
-    }
-
-    constructor() {
+    static init() {
+        const self = this;
 
         // StateDispatcher @param {boolean} [forceHash = undefined] Force hash navigation
-        super(true);
-        const self = this;
+        this.dispatcher = new StateDispatcher(true);
 
         addListeners();
 
         function addListeners() {
-            self.events.add(Events.UPDATE, stateChange);
+            Stage.events.add(self.dispatcher, Events.UPDATE, stateChange);
         }
 
         function stateChange(e) {
@@ -237,7 +232,7 @@ class Space extends Component {
         }
 
         function addListeners() {
-            const state = Data.instance().getState(),
+            const state = Data.dispatcher.getState(),
                 index = Stage.pathList.indexOf(state.path);
             if (~index) Global.SLIDE_INDEX = index;
             slide = self.initClass(Slide, {
@@ -249,9 +244,9 @@ class Space extends Component {
                 index: Global.SLIDE_INDEX,
                 axes: ['y']
             });
-            slide.events.add(Events.UPDATE, slideUpdate);
-            Stage.events.add(Events.SLIDE_CHANGE, slideChange);
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(slide, Events.UPDATE, slideUpdate);
+            self.events.add(Events.SLIDE_CHANGE, slideChange);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -264,15 +259,15 @@ class Space extends Component {
                 title.animateIn();
                 const progress = slide.y / slide.max.y,
                     i = Math.round(progress);
-                Data.instance().setState({ position: i }, data.path);
+                Data.dispatcher.setState({ position: i }, data.path);
             } else {
                 title.direction = 1;
                 title.update();
-                const state = Data.instance().getState(),
+                const state = Data.dispatcher.getState(),
                     index = Stage.pathList.indexOf(state.path);
-                if (!~index) Data.instance().replaceState(data.path);
+                if (!~index) Data.dispatcher.replaceState(data.path);
             }
-            Data.instance().setTitle(data.pageTitle);
+            Data.dispatcher.setTitle(data.pageTitle);
         }
 
         function slideChange(e) {
@@ -313,8 +308,8 @@ class Space extends Component {
         function unsetTextures(t1, t2) {
             Stage.list.forEach((video, i) => {
                 if (i !== t1 && i !== t2) {
-                    video.events.remove(Events.READY, play1);
-                    video.events.remove(Events.READY, play2);
+                    self.events.remove(video, Events.READY, play1);
+                    self.events.remove(video, Events.READY, play2);
                     video.pause();
                 }
             });
@@ -326,7 +321,7 @@ class Space extends Component {
                 if (video1.playing) {
                     play1();
                 } else {
-                    video1.events.add(Events.READY, play1);
+                    self.events.add(video1, Events.READY, play1);
                     video1.resume();
                 }
             } else {
@@ -341,7 +336,7 @@ class Space extends Component {
                 if (video2.playing) {
                     play2();
                 } else {
-                    video2.events.add(Events.READY, play2);
+                    self.events.add(video2, Events.READY, play2);
                     video2.resume();
                 }
             } else {
@@ -361,7 +356,7 @@ class Space extends Component {
         function loaded() {
             if (!self.loaded) {
                 self.loaded = true;
-                Stage.events.fire(Events.START);
+                self.events.fire(Events.START);
             }
         }
 
@@ -500,14 +495,14 @@ class Loader extends Interface {
             loader.push(self.initClass(FontLoader, ['Oswald', 'Karla']));
             loader.push(self.initClass(AssetLoader, Config.ASSETS));
             loader.push(slide);
-            loader.events.add(Events.PROGRESS, loadUpdate);
+            self.events.add(loader, Events.PROGRESS, loadUpdate);
             Stage.list = slide.list;
             Stage.pathList = slide.pathList;
         }
 
         function initProgress() {
             progress = self.initClass(Progress);
-            progress.events.add(Events.COMPLETE, loadComplete);
+            self.events.add(progress, Events.COMPLETE, loadComplete);
         }
 
         function loadUpdate(e) {
@@ -529,9 +524,14 @@ class Main {
     constructor() {
         let loader, space;
 
+        initData();
         initStage();
         initLoader();
         addListeners();
+
+        function initData() {
+            Data.init();
+        }
 
         function initStage() {
             Stage.size('100%');
@@ -541,7 +541,7 @@ class Main {
 
         function initLoader() {
             loader = Stage.initClass(Loader);
-            loader.events.add(Events.COMPLETE, loadComplete);
+            Stage.events.add(loader, Events.COMPLETE, loadComplete);
         }
 
         function loadComplete() {

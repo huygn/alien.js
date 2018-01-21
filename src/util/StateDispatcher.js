@@ -33,7 +33,7 @@ class StateDispatcher {
                 if (!self.locked) {
                     storePath = path;
                     storeState = state;
-                    self.events.fire(Events.UPDATE, { value: state, path });
+                    self.events.fire(Events.UPDATE, { value: state, path }, true);
                 } else if (storePath) {
                     if (forceHash) location.hash = '!/' + storePath;
                     else history.pushState(storeState, null, rootPath + storePath);

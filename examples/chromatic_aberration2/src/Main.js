@@ -148,7 +148,7 @@ class Space extends Component {
         }
 
         function addListeners() {
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -220,8 +220,8 @@ class World extends Component {
 
         function addListeners() {
             Stage.events.add(Events.RESIZE, resize);
-            Mouse.input.events.add(Interaction.START, down);
-            Mouse.input.events.add(Interaction.END, up);
+            Stage.events.add(Mouse.input, Interaction.START, down);
+            Stage.events.add(Mouse.input, Interaction.END, up);
             up();
             resize();
         }
@@ -327,12 +327,12 @@ class Loader extends Interface {
 
         function initLoader() {
             loader = self.initClass(AssetLoader, Config.ASSETS);
-            loader.events.add(Events.PROGRESS, loadUpdate);
+            self.events.add(loader, Events.PROGRESS, loadUpdate);
         }
 
         function initProgress() {
             progress = self.initClass(Progress);
-            progress.events.add(Events.COMPLETE, loadComplete);
+            self.events.add(progress, Events.COMPLETE, loadComplete);
         }
 
         function loadUpdate(e) {
@@ -367,7 +367,7 @@ class Main {
         function initLoader() {
             FontLoader.loadFonts(['Oswald', 'Karla']).then(() => {
                 loader = Stage.initClass(Loader);
-                loader.events.add(Events.COMPLETE, loadComplete);
+                Stage.events.add(loader, Events.COMPLETE, loadComplete);
             });
         }
 
