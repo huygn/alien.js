@@ -1,4 +1,4 @@
-import { timestamp, singletons, babel, uglify } from './alien.js/src/utils.js';
+import { timestamp, babel, uglify } from 'rollup-plugin-bundleutils';
 
 import glslify from 'rollup-plugin-glslify';
 import eslint from 'rollup-plugin-eslint';
@@ -24,7 +24,6 @@ export default {
         format: 'es'
     },
     plugins: [
-        singletons(),
         glslify({ basedir: 'src/shaders' }),
         eslint(),
         babel(),

@@ -6,7 +6,7 @@
 
 /* global THREE */
 
-import { Events, Stage, Component, Canvas, CanvasGraphics, Device, Utils, Assets, AssetLoader, TweenManager, Shader } from '../alien.js/src/Alien';
+import { Events, Stage, Component, Canvas, CanvasGraphics, Device, Utils, Assets, AssetLoader, TweenManager, Shader } from '../alien.js/src/Alien.js';
 
 import vert from './shaders/vert.glsl';
 import frag from './shaders/frag.glsl';

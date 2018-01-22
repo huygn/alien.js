@@ -4,13 +4,13 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Component } from './Component';
-import { Device } from './Device';
-import { Mouse } from './Mouse';
-import { Interaction } from './Interaction';
-import { TweenManager } from '../tween/TweenManager';
-import { Stage } from '../view/Stage';
+import { Events } from './Events.js';
+import { Component } from './Component.js';
+import { Device } from './Device.js';
+import { Mouse } from './Mouse.js';
+import { Interaction } from './Interaction.js';
+import { TweenManager } from '../tween/TweenManager.js';
+import { Stage } from '../view/Stage.js';
 
 class Scroll extends Component {
 

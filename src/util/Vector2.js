@@ -4,7 +4,7 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Interpolation } from '../tween/Interpolation';
+import { Interpolation } from '../tween/Interpolation.js';
 
 class Vector2 {
 

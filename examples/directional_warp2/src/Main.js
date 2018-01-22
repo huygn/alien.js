@@ -7,7 +7,7 @@
 /* global THREE */
 
 import { Events, Stage, Interface, Component, Canvas, CanvasFont, Device, Mouse, Assets, Slide, SlideLoader, SlideVideo,
-    MultiLoader, AssetLoader, FontLoader, StateDispatcher, TweenManager, Shader } from '../alien.js/src/Alien';
+    MultiLoader, AssetLoader, FontLoader, StateDispatcher, TweenManager, Shader } from '../alien.js/src/Alien.js';
 
 import vertRipple from './shaders/ripple.vert';
 import fragRipple from './shaders/ripple.frag';

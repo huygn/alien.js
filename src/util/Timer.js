@@ -4,12 +4,12 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Render } from './Render';
-import { Utils } from './Utils';
+import { Render } from './Render.js';
+import { Utils } from './Utils.js';
 
 class Timer {
 
-    constructor() {
+    static init() {
         const callbacks = [],
             discard = [];
 
@@ -61,5 +61,7 @@ class Timer {
         };
     }
 }
+
+Timer.init();
 
 export { Timer };

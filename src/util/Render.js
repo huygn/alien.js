@@ -11,7 +11,7 @@ if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitR
 
 class Render {
 
-    constructor() {
+    static init() {
         let self = this;
         const render = [],
             skipLimit = 200;
@@ -65,5 +65,7 @@ class Render {
         };
     }
 }
+
+Render.init();
 
 export { Render };

@@ -4,8 +4,8 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Utils } from '../util/Utils';
-import { CanvasObject } from './CanvasObject';
+import { Utils } from '../util/Utils.js';
+import { CanvasObject } from './CanvasObject.js';
 
 class CanvasGraphics extends CanvasObject {
 

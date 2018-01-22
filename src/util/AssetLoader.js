@@ -4,10 +4,10 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Component } from './Component';
-import { Utils } from './Utils';
-import { Assets } from './Assets';
+import { Events } from './Events.js';
+import { Component } from './Component.js';
+import { Utils } from './Utils.js';
+import { Assets } from './Assets.js';
 
 class AssetLoader extends Component {
 

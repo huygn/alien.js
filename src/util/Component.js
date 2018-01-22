@@ -4,10 +4,10 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Render } from './Render';
-import { Timer } from './Timer';
-import { Utils } from './Utils';
+import { Events } from './Events.js';
+import { Render } from './Render.js';
+import { Timer } from './Timer.js';
+import { Utils } from './Utils.js';
 
 class Component {
 

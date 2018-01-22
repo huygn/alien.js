@@ -6,8 +6,8 @@
 
 /* global THREE */
 
-import { Component } from '../util/Component';
-import { TweenManager } from '../tween/TweenManager';
+import { Component } from '../util/Component.js';
+import { TweenManager } from '../tween/TweenManager.js';
 
 class Shader extends Component {
 

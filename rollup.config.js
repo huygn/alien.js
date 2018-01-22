@@ -1,4 +1,4 @@
-import { timestamp, singletons, unexport, babel, uglify } from './src/utils.js';
+import { timestamp, unexport, babel, uglify } from 'rollup-plugin-bundleutils';
 
 let pkg = require('./package.json');
 
@@ -13,7 +13,6 @@ export default {
         format: 'es'
     }],
     plugins: [
-        singletons(),
         unexport(),
         process.env.babel ? babel() : {},
         process.env.uglify ? uglify({

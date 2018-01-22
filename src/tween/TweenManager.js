@@ -4,12 +4,12 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Render } from '../util/Render';
-import { MathTween } from './MathTween';
+import { Render } from '../util/Render.js';
+import { MathTween } from './MathTween.js';
 
 class TweenManager {
 
-    constructor() {
+    static init() {
         const self = this;
         this.TRANSFORMS = ['x', 'y', 'z', 'scale', 'scaleX', 'scaleY', 'rotation', 'rotationX', 'rotationY', 'rotationZ', 'skewX', 'skewY', 'perspective'];
         this.CSS_EASES = {
@@ -60,7 +60,7 @@ class TweenManager {
         };
     }
 
-    tween(object, props, time, ease, delay, callback, update) {
+    static tween(object, props, time, ease, delay, callback, update) {
         if (typeof delay !== 'number') {
             update = callback;
             callback = delay;
@@ -76,7 +76,7 @@ class TweenManager {
         return promise || tween;
     }
 
-    clearTween(object) {
+    static clearTween(object) {
         if (object.mathTween) object.mathTween.stop();
         if (object.mathTweens) {
             const tweens = object.mathTweens;
@@ -88,7 +88,7 @@ class TweenManager {
         }
     }
 
-    parseTransform(props) {
+    static parseTransform(props) {
         let transforms = '';
         if (typeof props.x !== 'undefined' || typeof props.y !== 'undefined' || typeof props.z !== 'undefined') {
             const x = props.x || 0,
@@ -116,11 +116,11 @@ class TweenManager {
         return transforms;
     }
 
-    isTransform(key) {
+    static isTransform(key) {
         return ~this.TRANSFORMS.indexOf(key);
     }
 
-    getAllTransforms(object) {
+    static getAllTransforms(object) {
         const obj = {};
         for (let i = 0; i < this.TRANSFORMS.length; i++) {
             const key = this.TRANSFORMS[i],
@@ -130,9 +130,11 @@ class TweenManager {
         return obj;
     }
 
-    getEase(name) {
+    static getEase(name) {
         return this.CSS_EASES[name] || this.CSS_EASES.easeOutCubic;
     }
 }
+
+TweenManager.init();
 
 export { TweenManager };

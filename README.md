@@ -9,8 +9,8 @@ A lightweight web framework for the future.
 
 ### Features
 
-* [Rollup](https://rollupjs.org/) module bundler with [Tree Shaking](https://github.com/rollup/rollup#tree-shaking), only the classes you use are compiled into your project.
-* Simple design pattern with inheritance, `Stage`, `Interface`, `Component`, `Canvas`, `Device`, `Mouse`, etc.
+* ES6 modules [without transpiling](https://rawgit.com/pschroen/alien.js/master/examples/module/), or use [Rollup](https://rollupjs.org/) with [Tree Shaking](https://github.com/rollup/rollup#tree-shaking), only the classes you use are compiled into your project.
+* Simple design pattern with inheritance, `Interface`, `Component`, etc.
 * Event based or use promises.
 * CSS3 animations.
 * Math and Spring animations.
@@ -42,7 +42,7 @@ glslify [shader](https://rawgit.com/pschroen/alien.js/master/examples/shader/dis
 ### Example `Interface` design pattern
 
 ```js
-import { Stage, Interface, Device } from '../alien.js/src/Alien';
+import { Stage, Interface, Device } from '../alien.js/src/Alien.js';
 
 Config.UI_OFFSET = Device.phone ? 20 : 35;
 
@@ -90,7 +90,7 @@ new Main();
 ### Example Singleton design pattern
 
 ```js
-import { Events, Stage, Interface, Canvas } from '../alien.js/src/Alien';
+import { Events, Stage, Interface, Canvas } from '../alien.js/src/Alien.js';
 
 class CanvasLayer extends Interface {
 
@@ -236,6 +236,7 @@ npm run build
 * Active Theory's [Finding Love Shaders](https://github.com/activetheory/Finding-Love-Shaders)
 * Active Theory's [Mira](https://medium.com/@activetheory/mira-exploring-the-potential-of-the-future-web-e1f7f326d58e)
 * [Active Theory](https://activetheory.net/)
+* [ECMAScript modules in browsers](https://jakearchibald.com/2017/es-modules-in-browsers/)
 * [How to Set Up Smaller, More Efficient JavaScript Bundling Using Rollup](https://code.lengstorf.com/learn-rollup-js/)
 
 ### Links

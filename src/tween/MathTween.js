@@ -4,9 +4,9 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Utils } from '../util/Utils';
-import { TweenManager } from './TweenManager';
-import { Interpolation } from './Interpolation';
+import { Utils } from '../util/Utils.js';
+import { TweenManager } from './TweenManager.js';
+import { Interpolation } from './Interpolation.js';
 
 class MathTween {
 

@@ -6,7 +6,7 @@
 
 class Assets {
 
-    constructor() {
+    static init() {
         this.CDN = '';
         this.CORS = null;
         const images = {};
@@ -30,7 +30,7 @@ class Assets {
         };
     }
 
-    loadImage(img) {
+    static loadImage(img) {
         if (typeof img === 'string') img = this.createImage(img);
         const promise = Promise.create();
         img.onload = promise.resolve;
@@ -38,5 +38,7 @@ class Assets {
         return promise;
     }
 }
+
+Assets.init();
 
 export { Assets };

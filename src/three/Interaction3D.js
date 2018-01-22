@@ -4,13 +4,13 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from '../util/Events';
-import { Render } from '../util/Render';
-import { Utils } from '../util/Utils';
-import { Mouse } from '../util/Mouse';
-import { Interaction } from '../util/Interaction';
-import { Stage } from '../view/Stage';
-import { Raycaster } from './Raycaster';
+import { Events } from '../util/Events.js';
+import { Render } from '../util/Render.js';
+import { Utils } from '../util/Utils.js';
+import { Mouse } from '../util/Mouse.js';
+import { Interaction } from '../util/Interaction.js';
+import { Stage } from '../view/Stage.js';
+import { Raycaster } from './Raycaster.js';
 
 class Interaction3D {
 

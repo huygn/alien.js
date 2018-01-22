@@ -4,7 +4,7 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
+import { Events } from './Events.js';
 
 class StateDispatcher {
 

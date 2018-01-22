@@ -4,8 +4,8 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Utils } from '../util/Utils';
-import { Interface } from '../util/Interface';
+import { Utils } from '../util/Utils.js';
+import { Interface } from '../util/Interface.js';
 
 class SVG {
 

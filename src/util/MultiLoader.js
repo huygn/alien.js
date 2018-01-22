@@ -4,8 +4,8 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Component } from './Component';
+import { Events } from './Events.js';
+import { Component } from './Component.js';
 
 class MultiLoader extends Component {
 

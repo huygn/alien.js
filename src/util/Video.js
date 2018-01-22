@@ -4,11 +4,11 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Component } from './Component';
-import { Interface } from './Interface';
-import { Device } from './Device';
-import { Assets } from './Assets';
+import { Events } from './Events.js';
+import { Component } from './Component.js';
+import { Interface } from './Interface.js';
+import { Device } from './Device.js';
+import { Assets } from './Assets.js';
 
 class Video extends Component {
 

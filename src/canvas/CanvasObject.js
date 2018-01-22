@@ -4,8 +4,8 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Utils } from '../util/Utils';
-import { CanvasValues } from './CanvasValues';
+import { Utils } from '../util/Utils.js';
+import { CanvasValues } from './CanvasValues.js';
 
 class CanvasObject {
 

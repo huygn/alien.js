@@ -4,7 +4,7 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Utils } from './Utils';
+import { Utils } from './Utils.js';
 
 class ObjectPool {
 

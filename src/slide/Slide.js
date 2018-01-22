@@ -4,13 +4,13 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from '../util/Events';
-import { Component } from '../util/Component';
-import { Mouse } from '../util/Mouse';
-import { Interaction } from '../util/Interaction';
-import { TweenManager } from '../tween/TweenManager';
-import { Interpolation } from '../tween/Interpolation';
-import { Stage } from '../view/Stage';
+import { Events } from '../util/Events.js';
+import { Component } from '../util/Component.js';
+import { Mouse } from '../util/Mouse.js';
+import { Interaction } from '../util/Interaction.js';
+import { TweenManager } from '../tween/TweenManager.js';
+import { Interpolation } from '../tween/Interpolation.js';
+import { Stage } from '../view/Stage.js';
 
 class Slide extends Component {
 

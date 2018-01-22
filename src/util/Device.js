@@ -6,7 +6,7 @@
 
 class Device {
 
-    constructor() {
+    static init() {
         this.agent = navigator.userAgent.toLowerCase();
         this.prefix = (() => {
             const styles = window.getComputedStyle(document.documentElement, ''),
@@ -100,17 +100,19 @@ class Device {
         })();
     }
 
-    detect(matches) {
+    static detect(matches) {
         return this.agent.includes(matches);
     }
 
-    vendor(style) {
+    static vendor(style) {
         return this.prefix.js + style;
     }
 
-    vibrate(time) {
+    static vibrate(time) {
         if (navigator.vibrate) navigator.vibrate(time);
     }
 }
+
+Device.init();
 
 export { Device };

@@ -6,7 +6,7 @@
 
 class Interpolation {
 
-    constructor() {
+    static init() {
         this.convertEase = ease => {
             return (() => {
                 let fn;
@@ -274,5 +274,7 @@ class Interpolation {
         };
     }
 }
+
+Interpolation.init();
 
 export { Interpolation };

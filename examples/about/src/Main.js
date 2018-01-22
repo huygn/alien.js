@@ -7,7 +7,7 @@
 /* global THREE */
 
 import { Events, Stage, Interface, Component, Device, Mouse, Interaction, Accelerometer, Utils,
-    Assets, AssetLoader, FontLoader, TweenManager, WebAudio, Shader } from '../alien.js/src/Alien';
+    Assets, AssetLoader, FontLoader, TweenManager, WebAudio, Shader } from '../alien.js/src/Alien.js';
 
 import vertColourBeam from './shaders/colour_beam.vert';
 import fragColourBeam from './shaders/colour_beam.frag';

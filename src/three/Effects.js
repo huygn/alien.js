@@ -6,9 +6,9 @@
 
 /* global THREE */
 
-import { Events } from '../util/Events';
-import { Component } from '../util/Component';
-import { Utils3D } from './Utils3D';
+import { Events } from '../util/Events.js';
+import { Component } from '../util/Component.js';
+import { Utils3D } from './Utils3D.js';
 
 class Effects extends Component {
 

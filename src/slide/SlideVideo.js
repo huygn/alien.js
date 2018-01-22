@@ -4,10 +4,10 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from '../util/Events';
-import { Component } from '../util/Component';
-import { Device } from '../util/Device';
-import { Assets } from '../util/Assets';
+import { Events } from '../util/Events.js';
+import { Component } from '../util/Component.js';
+import { Device } from '../util/Device.js';
+import { Assets } from '../util/Assets.js';
 
 class SlideVideo extends Component {
 

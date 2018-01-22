@@ -4,9 +4,9 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from '../util/Events';
-import { Component } from '../util/Component';
-import { SlideVideo } from './SlideVideo';
+import { Events } from '../util/Events.js';
+import { Component } from '../util/Component.js';
+import { SlideVideo } from './SlideVideo.js';
 
 class SlideLoader extends Component {
 

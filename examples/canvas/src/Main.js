@@ -4,7 +4,7 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events, Stage, Interface, Canvas, CanvasGraphics, Utils, Assets, AssetLoader, TweenManager } from '../alien.js/src/Alien';
+import { Events, Stage, Interface, Canvas, CanvasGraphics, Utils, Assets, AssetLoader, TweenManager } from '../alien.js/src/Alien.js';
 
 Config.UI_COLOR = 'white';
 

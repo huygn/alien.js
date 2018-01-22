@@ -4,13 +4,13 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Render } from './Render';
-import { Timer } from './Timer';
-import { Utils } from './Utils';
-import { Device } from './Device';
-import { TweenManager } from '../tween/TweenManager';
-import { CSSTransition } from '../tween/CSSTransition';
+import { Events } from './Events.js';
+import { Render } from './Render.js';
+import { Timer } from './Timer.js';
+import { Utils } from './Utils.js';
+import { Device } from './Device.js';
+import { TweenManager } from '../tween/TweenManager.js';
+import { CSSTransition } from '../tween/CSSTransition.js';
 
 class Interface {
 
@@ -23,13 +23,13 @@ class Interface {
             if (typeof name === 'string') {
                 this.name = name;
                 this.type = type;
-                if (this.type === 'svg') {
+                if (type === 'svg') {
                     const qualifiedName = detached || 'svg';
                     detached = true;
                     this.element = document.createElementNS('http://www.w3.org/2000/svg', qualifiedName);
                     this.element.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', 'http://www.w3.org/1999/xlink');
                 } else {
-                    this.element = document.createElement(this.type);
+                    this.element = document.createElement(type);
                     if (name[0] !== '.') this.element.id = name;
                     else this.element.className = name.substr(1);
                 }

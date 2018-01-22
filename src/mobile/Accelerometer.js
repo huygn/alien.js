@@ -4,11 +4,11 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Device } from '../util/Device';
+import { Device } from '../util/Device.js';
 
 class Accelerometer {
 
-    constructor() {
+    static init() {
         const self = this;
         this.x = 0;
         this.y = 0;
@@ -22,6 +22,9 @@ class Accelerometer {
         this.rotationRate.beta = 0;
         this.rotationRate.gamma = 0;
         this.toRadians = Device.os === 'ios' ? Math.PI / 180 : 1;
+
+        window.addEventListener('devicemotion', updateAccel, true);
+        window.addEventListener('deviceorientation', updateOrientation, true);
 
         function updateAccel(e) {
             switch (window.orientation) {
@@ -115,11 +118,6 @@ class Accelerometer {
             else if (Vx < 0) compassHeading += 2 * Math.PI;
             return compassHeading * (180 / Math.PI);
         }
-
-        this.init = () => {
-            window.addEventListener('devicemotion', updateAccel, true);
-            window.addEventListener('deviceorientation', updateOrientation, true);
-        };
     }
 }
 

@@ -4,11 +4,11 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Render } from './Render';
-import { Utils } from './Utils';
-import { Stage } from '../view/Stage';
-import { Vector2 } from './Vector2';
+import { Events } from './Events.js';
+import { Render } from './Render.js';
+import { Utils } from './Utils.js';
+import { Stage } from '../view/Stage.js';
+import { Vector2 } from './Vector2.js';
 
 class Interaction {
 

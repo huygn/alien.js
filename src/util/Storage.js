@@ -6,13 +6,13 @@
 
 class Storage {
 
-    set(key, value) {
+    static set(key, value) {
         if (value !== null && typeof value === 'object') value = JSON.stringify(value);
         if (value === null) window.localStorage.removeItem(key);
         else window.localStorage[key] = value;
     }
 
-    get(key) {
+    static get(key) {
         let value = window.localStorage[key];
         if (value) {
             let char0;

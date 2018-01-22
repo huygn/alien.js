@@ -4,12 +4,12 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Interaction } from './Interaction';
-import { Stage } from '../view/Stage';
+import { Interaction } from './Interaction.js';
+import { Stage } from '../view/Stage.js';
 
 class Mouse {
 
-    constructor() {
+    static init() {
         const self = this;
         this.x = 0;
         this.y = 0;
@@ -26,6 +26,14 @@ class Mouse {
             y: 0
         };
 
+        this.input = new Interaction();
+        Stage.events.add(this.input, Interaction.START, update);
+        Stage.events.add(this.input, Interaction.MOVE, update);
+        update({
+            x: Stage.width / 2,
+            y: Stage.height / 2
+        });
+
         function update(e) {
             self.x = e.x;
             self.y = e.y;
@@ -36,16 +44,6 @@ class Mouse {
             self.inverseNormal.x = self.normal.x;
             self.inverseNormal.y = 1 - self.normal.y;
         }
-
-        this.init = () => {
-            this.input = new Interaction();
-            Stage.events.add(this.input, Interaction.START, update);
-            Stage.events.add(this.input, Interaction.MOVE, update);
-            update({
-                x: Stage.width / 2,
-                y: Stage.height / 2
-            });
-        };
     }
 }
 

@@ -6,9 +6,9 @@
 
 /* global THREE */
 
-import { Component } from '../util/Component';
-import { Mouse } from '../util/Mouse';
-import { Stage } from '../view/Stage';
+import { Component } from '../util/Component.js';
+import { Mouse } from '../util/Mouse.js';
+import { Stage } from '../view/Stage.js';
 
 class Raycaster extends Component {
 

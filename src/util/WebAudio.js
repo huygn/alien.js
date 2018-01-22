@@ -4,33 +4,31 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Device } from './Device';
-import { TweenManager } from '../tween/TweenManager';
+import { Device } from './Device.js';
+import { TweenManager } from '../tween/TweenManager.js';
 
 if (!window.AudioContext) window.AudioContext = window.webkitAudioContext || window.mozAudioContext || window.oAudioContext;
 
 class WebAudio {
 
-    constructor() {
+    static init() {
         const self = this;
         const sounds = {};
         let context;
 
-        this.init = () => {
-            if (window.AudioContext) context = new AudioContext();
-            if (!context) return;
-            this.globalGain = context.createGain();
-            this.globalGain.connect(context.destination);
-            this.globalGain.value = this.globalGain.gain.defaultValue;
-            this.gain = {
-                set value(value) {
-                    self.globalGain.value = value;
-                    self.globalGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
-                },
-                get value() {
-                    return self.globalGain.value;
-                }
-            };
+        if (window.AudioContext) context = new AudioContext();
+        if (!context) return;
+        this.globalGain = context.createGain();
+        this.globalGain.connect(context.destination);
+        this.globalGain.value = this.globalGain.gain.defaultValue;
+        this.gain = {
+            set value(value) {
+                self.globalGain.value = value;
+                self.globalGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
+            },
+            get value() {
+                return self.globalGain.value;
+            }
         };
 
         this.loadSound = (id, callback) => {

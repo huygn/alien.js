@@ -4,9 +4,9 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Utils } from '../util/Utils';
-import { Interface } from '../util/Interface';
-import { CanvasGraphics } from './CanvasGraphics';
+import { Utils } from '../util/Utils.js';
+import { Interface } from '../util/Interface.js';
+import { CanvasGraphics } from './CanvasGraphics.js';
 
 class Canvas {
 

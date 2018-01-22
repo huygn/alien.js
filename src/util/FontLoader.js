@@ -4,9 +4,9 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Events } from './Events';
-import { Component } from './Component';
-import { Stage } from '../view/Stage';
+import { Events } from './Events.js';
+import { Component } from './Component.js';
+import { Stage } from '../view/Stage.js';
 
 class FontLoader extends Component {
 

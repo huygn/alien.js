@@ -1,4 +1,4 @@
-import { singletons, babel } from './alien.js/src/utils.js';
+import { babel } from 'rollup-plugin-bundleutils';
 
 import glslify from 'rollup-plugin-glslify';
 import eslint from 'rollup-plugin-eslint';
@@ -11,7 +11,6 @@ export default {
         name: 'Project'
     },
     plugins: [
-        singletons(),
         glslify({ basedir: 'src/shaders' }),
         eslint(),
         babel()

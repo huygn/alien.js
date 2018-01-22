@@ -6,8 +6,8 @@
 
 /* global THREE */
 
-import { Component } from '../util/Component';
-import { Stage } from '../view/Stage';
+import { Component } from '../util/Component.js';
+import { Stage } from '../view/Stage.js';
 
 class ScreenProjection extends Component {
 

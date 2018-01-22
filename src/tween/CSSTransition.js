@@ -4,10 +4,10 @@
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-import { Timer } from '../util/Timer';
-import { Utils } from '../util/Utils';
-import { Device } from '../util/Device';
-import { TweenManager } from './TweenManager';
+import { Timer } from '../util/Timer.js';
+import { Utils } from '../util/Utils.js';
+import { Device } from '../util/Device.js';
+import { TweenManager } from './TweenManager.js';
 
 class CSSTransition {
 
