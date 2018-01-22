@@ -42,20 +42,11 @@ Math.radians = function (degrees) {
     return degrees * (Math.PI / 180);
 };
 
-Math.clamp = function (value) {
-    var min = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
-    var max = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
-
+Math.clamp = function (value, min, max) {
     return Math.min(Math.max(value, Math.min(min, max)), Math.max(min, max));
 };
 
-Math.range = function (value) {
-    var oldMin = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : -1;
-    var oldMax = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 1;
-    var newMin = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
-    var newMax = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 1;
-    var isClamp = arguments[5];
-
+Math.range = function (value, oldMin, oldMax, newMin, newMax, isClamp) {
     var newValue = (value - oldMin) * (newMax - newMin) / (oldMax - oldMin) + newMin;
     if (isClamp) return Math.clamp(newValue, newMin, newMax);
     return newValue;
@@ -242,14 +233,12 @@ if (!window.Global) window.Global = {};
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Utils = new ( // Singleton pattern (IICE)
-
-function () {
+var Utils = function () {
     function Utils() {
         _classCallCheck(this, Utils);
     }
 
-    _createClass(Utils, [{
+    _createClass(Utils, null, [{
         key: 'random',
         value: function random(min, max) {
             var precision = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
@@ -370,7 +359,7 @@ function () {
     }]);
 
     return Utils;
-}())(); // Singleton pattern (IICE)
+}();
 
 /**
  * Render loop.
@@ -387,65 +376,76 @@ if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitR
     };
 }();
 
-var Render = new // Singleton pattern (IICE)
-
-function Render() {
-    var _this = this;
-
-    _classCallCheck(this, Render);
-
-    var self = this;
-    var render = [],
-        skipLimit = 200;
-    var last = performance.now();
-
-    requestAnimationFrame(step);
-
-    function step(t) {
-        var delta = Math.min(skipLimit, t - last);
-        last = t;
-        self.TIME = t;
-        self.DELTA = delta;
-        for (var i = render.length - 1; i >= 0; i--) {
-            var callback = render[i];
-            if (!callback) {
-                render.remove(callback);
-                continue;
-            }
-            if (callback.fps) {
-                if (t - callback.last < 1000 / callback.fps) continue;
-                callback(++callback.frame);
-                callback.last = t;
-                continue;
-            }
-            callback(t, delta);
-        }
-        if (!self.paused) requestAnimationFrame(step);
+var Render = function () {
+    function Render() {
+        _classCallCheck(this, Render);
     }
 
-    this.start = function (callback, fps) {
-        if (fps) {
-            callback.fps = fps;
-            callback.last = -Infinity;
-            callback.frame = -1;
+    _createClass(Render, null, [{
+        key: 'init',
+        value: function init() {
+            var _this = this;
+
+            var self = this;
+            var render = [],
+                skipLimit = 200;
+            var last = performance.now();
+
+            window.addEventListener('load', function () {
+                return requestAnimationFrame(step);
+            }, true);
+
+            function step(t) {
+                var delta = Math.min(skipLimit, t - last);
+                last = t;
+                self.TIME = t;
+                self.DELTA = delta;
+                for (var i = render.length - 1; i >= 0; i--) {
+                    var callback = render[i];
+                    if (!callback) {
+                        render.remove(callback);
+                        continue;
+                    }
+                    if (callback.fps) {
+                        if (t - callback.last < 1000 / callback.fps) continue;
+                        callback(++callback.frame);
+                        callback.last = t;
+                        continue;
+                    }
+                    callback(t, delta);
+                }
+                if (!self.paused) requestAnimationFrame(step);
+            }
+
+            this.start = function (callback, fps) {
+                if (fps) {
+                    callback.fps = fps;
+                    callback.last = -Infinity;
+                    callback.frame = -1;
+                }
+                if (!~render.indexOf(callback)) render.unshift(callback);
+            };
+
+            this.stop = function (callback) {
+                render.remove(callback);
+            };
+
+            this.pause = function () {
+                _this.paused = true;
+            };
+
+            this.resume = function () {
+                if (!_this.paused) return;
+                _this.paused = false;
+                requestAnimationFrame(step);
+            };
         }
-        if (!~render.indexOf(callback)) render.unshift(callback);
-    };
+    }]);
 
-    this.stop = function (callback) {
-        render.remove(callback);
-    };
+    return Render;
+}();
 
-    this.pause = function () {
-        _this.paused = true;
-    };
-
-    this.resume = function () {
-        if (!_this.paused) return;
-        _this.paused = false;
-        requestAnimationFrame(step);
-    };
-}(); // Singleton pattern (IICE)
+Render.init();
 
 /**
  * Timer helper class.
@@ -453,66 +453,75 @@ function Render() {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Timer = new // Singleton pattern (IICE)
-
-function Timer() {
-    _classCallCheck(this, Timer);
-
-    var callbacks = [],
-        discard = [];
-
-    Render.start(loop);
-
-    function loop(t, delta) {
-        for (var i = 0; i < discard.length; i++) {
-            var obj = discard[i];
-            obj.callback = null;
-            callbacks.remove(obj);
-        }
-        if (discard.length) discard.length = 0;
-        for (var _i = 0; _i < callbacks.length; _i++) {
-            var _obj = callbacks[_i];
-            if (!_obj) {
-                callbacks.remove(_obj);
-                continue;
-            }
-            if ((_obj.current += delta) >= _obj.time) {
-                if (_obj.callback) _obj.callback.apply(_obj, _toConsumableArray(_obj.args));
-                discard.push(_obj);
-            }
-        }
+var Timer = function () {
+    function Timer() {
+        _classCallCheck(this, Timer);
     }
 
-    function find(ref) {
-        for (var i = 0; i < callbacks.length; i++) {
-            if (callbacks[i].ref === ref) return callbacks[i];
-        }return null;
-    }
+    _createClass(Timer, null, [{
+        key: 'init',
+        value: function init() {
+            var callbacks = [],
+                discard = [];
 
-    this.clearTimeout = function (ref) {
-        var obj = find(ref);
-        if (!obj) return false;
-        obj.callback = null;
-        callbacks.remove(obj);
-        return true;
-    };
+            Render.start(loop);
 
-    this.create = function (callback, time) {
-        for (var _len2 = arguments.length, args = Array(_len2 > 2 ? _len2 - 2 : 0), _key2 = 2; _key2 < _len2; _key2++) {
-            args[_key2 - 2] = arguments[_key2];
+            function loop(t, delta) {
+                for (var i = 0; i < discard.length; i++) {
+                    var obj = discard[i];
+                    obj.callback = null;
+                    callbacks.remove(obj);
+                }
+                if (discard.length) discard.length = 0;
+                for (var _i = 0; _i < callbacks.length; _i++) {
+                    var _obj = callbacks[_i];
+                    if (!_obj) {
+                        callbacks.remove(_obj);
+                        continue;
+                    }
+                    if ((_obj.current += delta) >= _obj.time) {
+                        if (_obj.callback) _obj.callback.apply(_obj, _toConsumableArray(_obj.args));
+                        discard.push(_obj);
+                    }
+                }
+            }
+
+            function find(ref) {
+                for (var i = 0; i < callbacks.length; i++) {
+                    if (callbacks[i].ref === ref) return callbacks[i];
+                }return null;
+            }
+
+            this.clearTimeout = function (ref) {
+                var obj = find(ref);
+                if (!obj) return false;
+                obj.callback = null;
+                callbacks.remove(obj);
+                return true;
+            };
+
+            this.create = function (callback, time) {
+                for (var _len2 = arguments.length, args = Array(_len2 > 2 ? _len2 - 2 : 0), _key2 = 2; _key2 < _len2; _key2++) {
+                    args[_key2 - 2] = arguments[_key2];
+                }
+
+                var obj = {
+                    time: Math.max(1, time || 1),
+                    current: 0,
+                    ref: Utils.timestamp(),
+                    callback: callback,
+                    args: args
+                };
+                callbacks.push(obj);
+                return obj.ref;
+            };
         }
+    }]);
 
-        var obj = {
-            time: Math.max(1, time || 1),
-            current: 0,
-            ref: Utils.timestamp(),
-            callback: callback,
-            args: args
-        };
-        callbacks.push(obj);
-        return obj.ref;
-    };
-}(); // Singleton pattern (IICE)
+    return Timer;
+}();
+
+Timer.init();
 
 /**
  * Event helper class.
@@ -525,52 +534,130 @@ var Events = function Events() {
 
     _classCallCheck(this, Events);
 
-    var events = {};
+    var Emitter = function () {
+        function Emitter() {
+            _classCallCheck(this, Emitter);
 
-    this.add = function (event, callback) {
-        if (!events[event]) events[event] = [];
-        events[event].push(callback);
-    };
-
-    this.remove = function (event, callback) {
-        if (!events[event]) return;
-        events[event].remove(callback);
-    };
-
-    this.destroy = function () {
-        for (var event in events) {
-            for (var i = events[event].length - 1; i >= 0; i--) {
-                events[event][i] = null;
-                events[event].splice(i, 1);
-            }
+            this.events = [];
+            this.links = [];
         }
-        return Utils.nullObject(_this2);
+
+        _createClass(Emitter, [{
+            key: 'add',
+            value: function add(event, callback, object) {
+                this.events.push({ event: event, callback: callback, object: object });
+            }
+        }, {
+            key: 'remove',
+            value: function remove(event, callback) {
+                for (var i = this.events.length - 1; i >= 0; i--) {
+                    if (this.events[i].event === event && this.events[i].callback === callback) {
+                        this.events[i].removed = true;
+                        this.events.splice(i, 1)[0] = null;
+                    }
+                }
+            }
+        }, {
+            key: 'fire',
+            value: function fire(event) {
+                var object = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+
+                var called = false;
+                for (var i = 0; i < this.events.length; i++) {
+                    if (this.events[i].event === event && !this.events[i].removed) {
+                        this.events[i].callback(object);
+                        called = true;
+                    }
+                }
+                return called;
+            }
+        }, {
+            key: 'destroy',
+            value: function destroy(object) {
+                for (var i = this.events.length - 1; i >= 0; i--) {
+                    if (this.events[i].object === object) this.events.splice(i, 1)[0] = null;
+                }
+            }
+        }, {
+            key: 'link',
+            value: function link(object) {
+                if (!~this.links.indexOf(object)) this.links.push(object);
+            }
+        }]);
+
+        return Emitter;
+    }();
+
+    if (!Events.initialized) {
+        Events.emitter = new Emitter();
+        Events.VISIBILITY = 'visibility';
+        Events.KEYBOARD_PRESS = 'keyboard_press';
+        Events.KEYBOARD_DOWN = 'keyboard_down';
+        Events.KEYBOARD_UP = 'keyboard_up';
+        Events.RESIZE = 'resize';
+        Events.COMPLETE = 'complete';
+        Events.PROGRESS = 'progress';
+        Events.UPDATE = 'update';
+        Events.LOADED = 'loaded';
+        Events.ERROR = 'error';
+        Events.READY = 'ready';
+        Events.HOVER = 'hover';
+        Events.CLICK = 'click';
+
+        Events.initialized = true;
+    }
+    this.emitter = new Emitter();
+    var linked = [];
+
+    this.add = function (object, event, callback) {
+        if ((typeof object === 'undefined' ? 'undefined' : _typeof(object)) !== 'object') {
+            callback = event;
+            event = object;
+            object = null;
+        }
+        if (!object) {
+            Events.emitter.add(event, callback, _this2);
+        } else {
+            var emitter = object.events.emitter;
+            emitter.add(event, callback, _this2);
+            emitter.link(_this2);
+            linked.push(emitter);
+        }
+    };
+
+    this.remove = function (object, event, callback) {
+        if ((typeof object === 'undefined' ? 'undefined' : _typeof(object)) !== 'object') {
+            callback = event;
+            event = object;
+            object = null;
+        }
+        if (!object) Events.emitter.remove(event, callback);else object.events.emitter.remove(event, callback);
     };
 
     this.fire = function (event) {
         var object = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+        var local = arguments[2];
 
-        if (!events[event]) return;
-        var clone = Utils.cloneArray(events[event]);
-        clone.forEach(function (callback) {
-            return callback(object);
+        if (_this2.emitter.fire(event, object)) return;
+        if (local) return;
+        Events.emitter.fire(event, object);
+    };
+
+    this.destroy = function () {
+        Events.emitter.destroy(_this2);
+        linked.forEach(function (emitter) {
+            return emitter.destroy(_this2);
         });
+        _this2.emitter.links.forEach(function (object) {
+            return object.unlink(_this2.emitter);
+        });
+        return Utils.nullObject(_this2);
+    };
+
+    this.unlink = function (emitter) {
+        linked.remove(emitter);
     };
 };
-
-Events.VISIBILITY = 'visibility';
-Events.KEYBOARD_PRESS = 'keyboard_press';
-Events.KEYBOARD_DOWN = 'keyboard_down';
-Events.KEYBOARD_UP = 'keyboard_up';
-Events.RESIZE = 'resize';
-Events.COMPLETE = 'complete';
-Events.PROGRESS = 'progress';
-Events.UPDATE = 'update';
-Events.LOADED = 'loaded';
-Events.ERROR = 'error';
-Events.READY = 'ready';
-Events.HOVER = 'hover';
-Events.CLICK = 'click';
 
 /**
  * Browser detection and vendor prefixes.
@@ -578,109 +665,110 @@ Events.CLICK = 'click';
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Device = new ( // Singleton pattern (IICE)
-
-function () {
+var Device = function () {
     function Device() {
-        var _this3 = this;
-
         _classCallCheck(this, Device);
-
-        this.agent = navigator.userAgent.toLowerCase();
-        this.prefix = function () {
-            var styles = window.getComputedStyle(document.documentElement, ''),
-                pre = (Array.prototype.slice.call(styles).join('').match(/-(webkit|moz|ms)-/) || styles.OLink === '' && ['', 'o'])[1];
-            return {
-                lowercase: pre,
-                js: pre[0].toUpperCase() + pre.substr(1)
-            };
-        }();
-        this.transformProperty = function () {
-            var pre = void 0;
-            switch (_this3.prefix.lowercase) {
-                case 'webkit':
-                    pre = '-webkit-transform';
-                    break;
-                case 'moz':
-                    pre = '-moz-transform';
-                    break;
-                case 'ms':
-                    pre = '-ms-transform';
-                    break;
-                case 'o':
-                    pre = '-o-transform';
-                    break;
-                default:
-                    pre = 'transform';
-                    break;
-            }
-            return pre;
-        }();
-        this.pixelRatio = window.devicePixelRatio;
-        this.os = function () {
-            if (_this3.detect(['iphone', 'ipad'])) return 'ios';
-            if (_this3.detect(['android'])) return 'android';
-            if (_this3.detect(['blackberry'])) return 'blackberry';
-            if (_this3.detect(['mac os'])) return 'mac';
-            if (_this3.detect(['windows'])) return 'windows';
-            if (_this3.detect(['linux'])) return 'linux';
-            return 'unknown';
-        }();
-        this.browser = function () {
-            if (_this3.os === 'ios') {
-                if (_this3.detect(['safari'])) return 'safari';
-                return 'unknown';
-            }
-            if (_this3.os === 'android') {
-                if (_this3.detect(['chrome'])) return 'chrome';
-                if (_this3.detect(['firefox'])) return 'firefox';
-                return 'browser';
-            }
-            if (_this3.detect(['msie'])) return 'ie';
-            if (_this3.detect(['trident']) && _this3.detect(['rv:'])) return 'ie';
-            if (_this3.detect(['windows']) && _this3.detect(['edge'])) return 'ie';
-            if (_this3.detect(['chrome'])) return 'chrome';
-            if (_this3.detect(['safari'])) return 'safari';
-            if (_this3.detect(['firefox'])) return 'firefox';
-            return 'unknown';
-        }();
-        this.mobile = 'ontouchstart' in window && this.detect(['iphone', 'ipad', 'android', 'blackberry']);
-        this.tablet = Math.max(screen.width, screen.height) > 800;
-        this.phone = !this.tablet;
-        this.webgl = function () {
-            try {
-                var names = ['webgl', 'experimental-webgl', 'webkit-3d', 'moz-webgl'],
-                    canvas = document.createElement('canvas');
-                var gl = void 0;
-                for (var i = 0; i < names.length; i++) {
-                    gl = canvas.getContext(names[i]);
-                    if (gl) break;
-                }
-                var info = gl.getExtension('WEBGL_debug_renderer_info'),
-                    output = {};
-                if (info) {
-                    var gpu = info.UNMASKED_RENDERER_WEBGL;
-                    output.gpu = gl.getParameter(gpu).toLowerCase();
-                }
-                output.renderer = gl.getParameter(gl.RENDERER).toLowerCase();
-                output.version = gl.getParameter(gl.VERSION).toLowerCase();
-                output.glsl = gl.getParameter(gl.SHADING_LANGUAGE_VERSION).toLowerCase();
-                output.extensions = gl.getSupportedExtensions();
-                output.detect = function (matches) {
-                    if (output.gpu && output.gpu.includes(matches)) return true;
-                    if (output.version && output.version.includes(matches)) return true;
-                    for (var _i2 = 0; _i2 < output.extensions.length; _i2++) {
-                        if (output.extensions[_i2].toLowerCase().includes(matches)) return true;
-                    }return false;
-                };
-                return output;
-            } catch (e) {
-                return false;
-            }
-        }();
     }
 
-    _createClass(Device, [{
+    _createClass(Device, null, [{
+        key: 'init',
+        value: function init() {
+            var _this3 = this;
+
+            this.agent = navigator.userAgent.toLowerCase();
+            this.prefix = function () {
+                var styles = window.getComputedStyle(document.documentElement, ''),
+                    pre = (Array.prototype.slice.call(styles).join('').match(/-(webkit|moz|ms)-/) || styles.OLink === '' && ['', 'o'])[1];
+                return {
+                    lowercase: pre,
+                    js: pre[0].toUpperCase() + pre.substr(1)
+                };
+            }();
+            this.transformProperty = function () {
+                var pre = void 0;
+                switch (_this3.prefix.lowercase) {
+                    case 'webkit':
+                        pre = '-webkit-transform';
+                        break;
+                    case 'moz':
+                        pre = '-moz-transform';
+                        break;
+                    case 'ms':
+                        pre = '-ms-transform';
+                        break;
+                    case 'o':
+                        pre = '-o-transform';
+                        break;
+                    default:
+                        pre = 'transform';
+                        break;
+                }
+                return pre;
+            }();
+            this.pixelRatio = window.devicePixelRatio;
+            this.os = function () {
+                if (_this3.detect(['iphone', 'ipad'])) return 'ios';
+                if (_this3.detect(['android'])) return 'android';
+                if (_this3.detect(['blackberry'])) return 'blackberry';
+                if (_this3.detect(['mac os'])) return 'mac';
+                if (_this3.detect(['windows'])) return 'windows';
+                if (_this3.detect(['linux'])) return 'linux';
+                return 'unknown';
+            }();
+            this.browser = function () {
+                if (_this3.os === 'ios') {
+                    if (_this3.detect(['safari'])) return 'safari';
+                    return 'unknown';
+                }
+                if (_this3.os === 'android') {
+                    if (_this3.detect(['chrome'])) return 'chrome';
+                    if (_this3.detect(['firefox'])) return 'firefox';
+                    return 'browser';
+                }
+                if (_this3.detect(['msie'])) return 'ie';
+                if (_this3.detect(['trident']) && _this3.detect(['rv:'])) return 'ie';
+                if (_this3.detect(['windows']) && _this3.detect(['edge'])) return 'ie';
+                if (_this3.detect(['chrome'])) return 'chrome';
+                if (_this3.detect(['safari'])) return 'safari';
+                if (_this3.detect(['firefox'])) return 'firefox';
+                return 'unknown';
+            }();
+            this.mobile = 'ontouchstart' in window && this.detect(['iphone', 'ipad', 'android', 'blackberry']);
+            this.tablet = Math.max(screen.width, screen.height) > 800;
+            this.phone = !this.tablet;
+            this.webgl = function () {
+                try {
+                    var names = ['webgl', 'experimental-webgl', 'webkit-3d', 'moz-webgl'],
+                        canvas = document.createElement('canvas');
+                    var gl = void 0;
+                    for (var i = 0; i < names.length; i++) {
+                        gl = canvas.getContext(names[i]);
+                        if (gl) break;
+                    }
+                    var info = gl.getExtension('WEBGL_debug_renderer_info'),
+                        output = {};
+                    if (info) {
+                        var gpu = info.UNMASKED_RENDERER_WEBGL;
+                        output.gpu = gl.getParameter(gpu).toLowerCase();
+                    }
+                    output.renderer = gl.getParameter(gl.RENDERER).toLowerCase();
+                    output.version = gl.getParameter(gl.VERSION).toLowerCase();
+                    output.glsl = gl.getParameter(gl.SHADING_LANGUAGE_VERSION).toLowerCase();
+                    output.extensions = gl.getSupportedExtensions();
+                    output.detect = function (matches) {
+                        if (output.gpu && output.gpu.includes(matches)) return true;
+                        if (output.version && output.version.includes(matches)) return true;
+                        for (var _i2 = 0; _i2 < output.extensions.length; _i2++) {
+                            if (output.extensions[_i2].toLowerCase().includes(matches)) return true;
+                        }return false;
+                    };
+                    return output;
+                } catch (e) {
+                    return false;
+                }
+            }();
+        }
+    }, {
         key: 'detect',
         value: function detect(matches) {
             return this.agent.includes(matches);
@@ -698,7 +786,9 @@ function () {
     }]);
 
     return Device;
-}())(); // Singleton pattern (IICE)
+}();
+
+Device.init();
 
 /**
  * Alien component.
@@ -810,288 +900,297 @@ var Component = function () {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Interpolation = new // Singleton pattern (IICE)
+var Interpolation = function () {
+    function Interpolation() {
+        _classCallCheck(this, Interpolation);
+    }
 
-function Interpolation() {
-    var _this4 = this;
+    _createClass(Interpolation, null, [{
+        key: 'init',
+        value: function init() {
+            var _this4 = this;
 
-    _classCallCheck(this, Interpolation);
+            this.convertEase = function (ease) {
+                return function () {
+                    var fn = void 0;
+                    switch (ease) {
+                        case 'easeInQuad':
+                            fn = _this4.Quad.In;
+                            break;
+                        case 'easeInCubic':
+                            fn = _this4.Cubic.In;
+                            break;
+                        case 'easeInQuart':
+                            fn = _this4.Quart.In;
+                            break;
+                        case 'easeInQuint':
+                            fn = _this4.Quint.In;
+                            break;
+                        case 'easeInSine':
+                            fn = _this4.Sine.In;
+                            break;
+                        case 'easeInExpo':
+                            fn = _this4.Expo.In;
+                            break;
+                        case 'easeInCirc':
+                            fn = _this4.Circ.In;
+                            break;
+                        case 'easeInElastic':
+                            fn = _this4.Elastic.In;
+                            break;
+                        case 'easeInBack':
+                            fn = _this4.Back.In;
+                            break;
+                        case 'easeInBounce':
+                            fn = _this4.Bounce.In;
+                            break;
+                        case 'easeOutQuad':
+                            fn = _this4.Quad.Out;
+                            break;
+                        case 'easeOutCubic':
+                            fn = _this4.Cubic.Out;
+                            break;
+                        case 'easeOutQuart':
+                            fn = _this4.Quart.Out;
+                            break;
+                        case 'easeOutQuint':
+                            fn = _this4.Quint.Out;
+                            break;
+                        case 'easeOutSine':
+                            fn = _this4.Sine.Out;
+                            break;
+                        case 'easeOutExpo':
+                            fn = _this4.Expo.Out;
+                            break;
+                        case 'easeOutCirc':
+                            fn = _this4.Circ.Out;
+                            break;
+                        case 'easeOutElastic':
+                            fn = _this4.Elastic.Out;
+                            break;
+                        case 'easeOutBack':
+                            fn = _this4.Back.Out;
+                            break;
+                        case 'easeOutBounce':
+                            fn = _this4.Bounce.Out;
+                            break;
+                        case 'easeInOutQuad':
+                            fn = _this4.Quad.InOut;
+                            break;
+                        case 'easeInOutCubic':
+                            fn = _this4.Cubic.InOut;
+                            break;
+                        case 'easeInOutQuart':
+                            fn = _this4.Quart.InOut;
+                            break;
+                        case 'easeInOutQuint':
+                            fn = _this4.Quint.InOut;
+                            break;
+                        case 'easeInOutSine':
+                            fn = _this4.Sine.InOut;
+                            break;
+                        case 'easeInOutExpo':
+                            fn = _this4.Expo.InOut;
+                            break;
+                        case 'easeInOutCirc':
+                            fn = _this4.Circ.InOut;
+                            break;
+                        case 'easeInOutElastic':
+                            fn = _this4.Elastic.InOut;
+                            break;
+                        case 'easeInOutBack':
+                            fn = _this4.Back.InOut;
+                            break;
+                        case 'easeInOutBounce':
+                            fn = _this4.Bounce.InOut;
+                            break;
+                        case 'linear':
+                            fn = _this4.Linear.None;
+                            break;
+                    }
+                    return fn;
+                }() || _this4.Cubic.Out;
+            };
 
-    this.convertEase = function (ease) {
-        return function () {
-            var fn = void 0;
-            switch (ease) {
-                case 'easeInQuad':
-                    fn = _this4.Quad.In;
-                    break;
-                case 'easeInCubic':
-                    fn = _this4.Cubic.In;
-                    break;
-                case 'easeInQuart':
-                    fn = _this4.Quart.In;
-                    break;
-                case 'easeInQuint':
-                    fn = _this4.Quint.In;
-                    break;
-                case 'easeInSine':
-                    fn = _this4.Sine.In;
-                    break;
-                case 'easeInExpo':
-                    fn = _this4.Expo.In;
-                    break;
-                case 'easeInCirc':
-                    fn = _this4.Circ.In;
-                    break;
-                case 'easeInElastic':
-                    fn = _this4.Elastic.In;
-                    break;
-                case 'easeInBack':
-                    fn = _this4.Back.In;
-                    break;
-                case 'easeInBounce':
-                    fn = _this4.Bounce.In;
-                    break;
-                case 'easeOutQuad':
-                    fn = _this4.Quad.Out;
-                    break;
-                case 'easeOutCubic':
-                    fn = _this4.Cubic.Out;
-                    break;
-                case 'easeOutQuart':
-                    fn = _this4.Quart.Out;
-                    break;
-                case 'easeOutQuint':
-                    fn = _this4.Quint.Out;
-                    break;
-                case 'easeOutSine':
-                    fn = _this4.Sine.Out;
-                    break;
-                case 'easeOutExpo':
-                    fn = _this4.Expo.Out;
-                    break;
-                case 'easeOutCirc':
-                    fn = _this4.Circ.Out;
-                    break;
-                case 'easeOutElastic':
-                    fn = _this4.Elastic.Out;
-                    break;
-                case 'easeOutBack':
-                    fn = _this4.Back.Out;
-                    break;
-                case 'easeOutBounce':
-                    fn = _this4.Bounce.Out;
-                    break;
-                case 'easeInOutQuad':
-                    fn = _this4.Quad.InOut;
-                    break;
-                case 'easeInOutCubic':
-                    fn = _this4.Cubic.InOut;
-                    break;
-                case 'easeInOutQuart':
-                    fn = _this4.Quart.InOut;
-                    break;
-                case 'easeInOutQuint':
-                    fn = _this4.Quint.InOut;
-                    break;
-                case 'easeInOutSine':
-                    fn = _this4.Sine.InOut;
-                    break;
-                case 'easeInOutExpo':
-                    fn = _this4.Expo.InOut;
-                    break;
-                case 'easeInOutCirc':
-                    fn = _this4.Circ.InOut;
-                    break;
-                case 'easeInOutElastic':
-                    fn = _this4.Elastic.InOut;
-                    break;
-                case 'easeInOutBack':
-                    fn = _this4.Back.InOut;
-                    break;
-                case 'easeInOutBounce':
-                    fn = _this4.Bounce.InOut;
-                    break;
-                case 'linear':
-                    fn = _this4.Linear.None;
-                    break;
-            }
-            return fn;
-        }() || _this4.Cubic.Out;
-    };
+            this.Linear = {
+                None: function None(k) {
+                    return k;
+                }
+            };
 
-    this.Linear = {
-        None: function None(k) {
-            return k;
+            this.Quad = {
+                In: function In(k) {
+                    return k * k;
+                },
+                Out: function Out(k) {
+                    return k * (2 - k);
+                },
+                InOut: function InOut(k) {
+                    if ((k *= 2) < 1) return 0.5 * k * k;
+                    return -0.5 * (--k * (k - 2) - 1);
+                }
+            };
+
+            this.Cubic = {
+                In: function In(k) {
+                    return k * k * k;
+                },
+                Out: function Out(k) {
+                    return --k * k * k + 1;
+                },
+                InOut: function InOut(k) {
+                    if ((k *= 2) < 1) return 0.5 * k * k * k;
+                    return 0.5 * ((k -= 2) * k * k + 2);
+                }
+            };
+
+            this.Quart = {
+                In: function In(k) {
+                    return k * k * k * k;
+                },
+                Out: function Out(k) {
+                    return 1 - --k * k * k * k;
+                },
+                InOut: function InOut(k) {
+                    if ((k *= 2) < 1) return 0.5 * k * k * k * k;
+                    return -0.5 * ((k -= 2) * k * k * k - 2);
+                }
+            };
+
+            this.Quint = {
+                In: function In(k) {
+                    return k * k * k * k * k;
+                },
+                Out: function Out(k) {
+                    return --k * k * k * k * k + 1;
+                },
+                InOut: function InOut(k) {
+                    if ((k *= 2) < 1) return 0.5 * k * k * k * k * k;
+                    return 0.5 * ((k -= 2) * k * k * k * k + 2);
+                }
+            };
+
+            this.Sine = {
+                In: function In(k) {
+                    return 1 - Math.cos(k * Math.PI / 2);
+                },
+                Out: function Out(k) {
+                    return Math.sin(k * Math.PI / 2);
+                },
+                InOut: function InOut(k) {
+                    return 0.5 * (1 - Math.cos(Math.PI * k));
+                }
+            };
+
+            this.Expo = {
+                In: function In(k) {
+                    return k === 0 ? 0 : Math.pow(1024, k - 1);
+                },
+                Out: function Out(k) {
+                    return k === 1 ? 1 : 1 - Math.pow(2, -10 * k);
+                },
+                InOut: function InOut(k) {
+                    if (k === 0) return 0;
+                    if (k === 1) return 1;
+                    if ((k *= 2) < 1) return 0.5 * Math.pow(1024, k - 1);
+                    return 0.5 * (-Math.pow(2, -10 * (k - 1)) + 2);
+                }
+            };
+
+            this.Circ = {
+                In: function In(k) {
+                    return 1 - Math.sqrt(1 - k * k);
+                },
+                Out: function Out(k) {
+                    return Math.sqrt(1 - --k * k);
+                },
+                InOut: function InOut(k) {
+                    if ((k *= 2) < 1) return -0.5 * (Math.sqrt(1 - k * k) - 1);
+                    return 0.5 * (Math.sqrt(1 - (k -= 2) * k) + 1);
+                }
+            };
+
+            this.Elastic = {
+                In: function In(k) {
+                    var a = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+                    var p = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0.4;
+
+                    var s = void 0;
+                    if (k === 0) return 0;
+                    if (k === 1) return 1;
+                    if (!a || a < 1) {
+                        a = 1;
+                        s = p / 4;
+                    } else s = p * Math.asin(1 / a) / (2 * Math.PI);
+                    return -(a * Math.pow(2, 10 * (k -= 1)) * Math.sin((k - s) * (2 * Math.PI) / p));
+                },
+                Out: function Out(k) {
+                    var a = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+                    var p = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0.4;
+
+                    var s = void 0;
+                    if (k === 0) return 0;
+                    if (k === 1) return 1;
+                    if (!a || a < 1) {
+                        a = 1;
+                        s = p / 4;
+                    } else s = p * Math.asin(1 / a) / (2 * Math.PI);
+                    return a * Math.pow(2, -10 * k) * Math.sin((k - s) * (2 * Math.PI) / p) + 1;
+                },
+                InOut: function InOut(k) {
+                    var a = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+                    var p = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0.4;
+
+                    var s = void 0;
+                    if (k === 0) return 0;
+                    if (k === 1) return 1;
+                    if (!a || a < 1) {
+                        a = 1;
+                        s = p / 4;
+                    } else s = p * Math.asin(1 / a) / (2 * Math.PI);
+                    if ((k *= 2) < 1) return -0.5 * (a * Math.pow(2, 10 * (k -= 1)) * Math.sin((k - s) * (2 * Math.PI) / p));
+                    return a * Math.pow(2, -10 * (k -= 1)) * Math.sin((k - s) * (2 * Math.PI) / p) * 0.5 + 1;
+                }
+            };
+
+            this.Back = {
+                In: function In(k) {
+                    var s = 1.70158;
+                    return k * k * ((s + 1) * k - s);
+                },
+                Out: function Out(k) {
+                    var s = 1.70158;
+                    return --k * k * ((s + 1) * k + s) + 1;
+                },
+                InOut: function InOut(k) {
+                    var s = 1.70158 * 1.525;
+                    if ((k *= 2) < 1) return 0.5 * (k * k * ((s + 1) * k - s));
+                    return 0.5 * ((k -= 2) * k * ((s + 1) * k + s) + 2);
+                }
+            };
+
+            this.Bounce = {
+                In: function In(k) {
+                    return 1 - this.Bounce.Out(1 - k);
+                },
+                Out: function Out(k) {
+                    if (k < 1 / 2.75) return 7.5625 * k * k;
+                    if (k < 2 / 2.75) return 7.5625 * (k -= 1.5 / 2.75) * k + 0.75;
+                    if (k < 2.5 / 2.75) return 7.5625 * (k -= 2.25 / 2.75) * k + 0.9375;
+                    return 7.5625 * (k -= 2.625 / 2.75) * k + 0.984375;
+                },
+                InOut: function InOut(k) {
+                    if (k < 0.5) return this.Bounce.In(k * 2) * 0.5;
+                    return this.Bounce.Out(k * 2 - 1) * 0.5 + 0.5;
+                }
+            };
         }
-    };
+    }]);
 
-    this.Quad = {
-        In: function In(k) {
-            return k * k;
-        },
-        Out: function Out(k) {
-            return k * (2 - k);
-        },
-        InOut: function InOut(k) {
-            if ((k *= 2) < 1) return 0.5 * k * k;
-            return -0.5 * (--k * (k - 2) - 1);
-        }
-    };
+    return Interpolation;
+}();
 
-    this.Cubic = {
-        In: function In(k) {
-            return k * k * k;
-        },
-        Out: function Out(k) {
-            return --k * k * k + 1;
-        },
-        InOut: function InOut(k) {
-            if ((k *= 2) < 1) return 0.5 * k * k * k;
-            return 0.5 * ((k -= 2) * k * k + 2);
-        }
-    };
-
-    this.Quart = {
-        In: function In(k) {
-            return k * k * k * k;
-        },
-        Out: function Out(k) {
-            return 1 - --k * k * k * k;
-        },
-        InOut: function InOut(k) {
-            if ((k *= 2) < 1) return 0.5 * k * k * k * k;
-            return -0.5 * ((k -= 2) * k * k * k - 2);
-        }
-    };
-
-    this.Quint = {
-        In: function In(k) {
-            return k * k * k * k * k;
-        },
-        Out: function Out(k) {
-            return --k * k * k * k * k + 1;
-        },
-        InOut: function InOut(k) {
-            if ((k *= 2) < 1) return 0.5 * k * k * k * k * k;
-            return 0.5 * ((k -= 2) * k * k * k * k + 2);
-        }
-    };
-
-    this.Sine = {
-        In: function In(k) {
-            return 1 - Math.cos(k * Math.PI / 2);
-        },
-        Out: function Out(k) {
-            return Math.sin(k * Math.PI / 2);
-        },
-        InOut: function InOut(k) {
-            return 0.5 * (1 - Math.cos(Math.PI * k));
-        }
-    };
-
-    this.Expo = {
-        In: function In(k) {
-            return k === 0 ? 0 : Math.pow(1024, k - 1);
-        },
-        Out: function Out(k) {
-            return k === 1 ? 1 : 1 - Math.pow(2, -10 * k);
-        },
-        InOut: function InOut(k) {
-            if (k === 0) return 0;
-            if (k === 1) return 1;
-            if ((k *= 2) < 1) return 0.5 * Math.pow(1024, k - 1);
-            return 0.5 * (-Math.pow(2, -10 * (k - 1)) + 2);
-        }
-    };
-
-    this.Circ = {
-        In: function In(k) {
-            return 1 - Math.sqrt(1 - k * k);
-        },
-        Out: function Out(k) {
-            return Math.sqrt(1 - --k * k);
-        },
-        InOut: function InOut(k) {
-            if ((k *= 2) < 1) return -0.5 * (Math.sqrt(1 - k * k) - 1);
-            return 0.5 * (Math.sqrt(1 - (k -= 2) * k) + 1);
-        }
-    };
-
-    this.Elastic = {
-        In: function In(k) {
-            var a = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
-            var p = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0.4;
-
-            var s = void 0;
-            if (k === 0) return 0;
-            if (k === 1) return 1;
-            if (!a || a < 1) {
-                a = 1;
-                s = p / 4;
-            } else s = p * Math.asin(1 / a) / (2 * Math.PI);
-            return -(a * Math.pow(2, 10 * (k -= 1)) * Math.sin((k - s) * (2 * Math.PI) / p));
-        },
-        Out: function Out(k) {
-            var a = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
-            var p = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0.4;
-
-            var s = void 0;
-            if (k === 0) return 0;
-            if (k === 1) return 1;
-            if (!a || a < 1) {
-                a = 1;
-                s = p / 4;
-            } else s = p * Math.asin(1 / a) / (2 * Math.PI);
-            return a * Math.pow(2, -10 * k) * Math.sin((k - s) * (2 * Math.PI) / p) + 1;
-        },
-        InOut: function InOut(k) {
-            var a = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
-            var p = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0.4;
-
-            var s = void 0;
-            if (k === 0) return 0;
-            if (k === 1) return 1;
-            if (!a || a < 1) {
-                a = 1;
-                s = p / 4;
-            } else s = p * Math.asin(1 / a) / (2 * Math.PI);
-            if ((k *= 2) < 1) return -0.5 * (a * Math.pow(2, 10 * (k -= 1)) * Math.sin((k - s) * (2 * Math.PI) / p));
-            return a * Math.pow(2, -10 * (k -= 1)) * Math.sin((k - s) * (2 * Math.PI) / p) * 0.5 + 1;
-        }
-    };
-
-    this.Back = {
-        In: function In(k) {
-            var s = 1.70158;
-            return k * k * ((s + 1) * k - s);
-        },
-        Out: function Out(k) {
-            var s = 1.70158;
-            return --k * k * ((s + 1) * k + s) + 1;
-        },
-        InOut: function InOut(k) {
-            var s = 1.70158 * 1.525;
-            if ((k *= 2) < 1) return 0.5 * (k * k * ((s + 1) * k - s));
-            return 0.5 * ((k -= 2) * k * ((s + 1) * k + s) + 2);
-        }
-    };
-
-    this.Bounce = {
-        In: function In(k) {
-            return 1 - this.Bounce.Out(1 - k);
-        },
-        Out: function Out(k) {
-            if (k < 1 / 2.75) return 7.5625 * k * k;
-            if (k < 2 / 2.75) return 7.5625 * (k -= 1.5 / 2.75) * k + 0.75;
-            if (k < 2.5 / 2.75) return 7.5625 * (k -= 2.25 / 2.75) * k + 0.9375;
-            return 7.5625 * (k -= 2.625 / 2.75) * k + 0.984375;
-        },
-        InOut: function InOut(k) {
-            if (k < 0.5) return this.Bounce.In(k * 2) * 0.5;
-            return this.Bounce.Out(k * 2 - 1) * 0.5 + 0.5;
-        }
-    };
-}(); // Singleton pattern (IICE)
+Interpolation.init();
 
 /**
  * Mathematical.
@@ -1187,62 +1286,63 @@ var MathTween = function MathTween(object, props, time, ease, delay, update, cal
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var TweenManager = new ( // Singleton pattern (IICE)
-
-function () {
+var TweenManager = function () {
     function TweenManager() {
         _classCallCheck(this, TweenManager);
-
-        var self = this;
-        this.TRANSFORMS = ['x', 'y', 'z', 'scale', 'scaleX', 'scaleY', 'rotation', 'rotationX', 'rotationY', 'rotationZ', 'skewX', 'skewY', 'perspective'];
-        this.CSS_EASES = {
-            easeOutCubic: 'cubic-bezier(0.215, 0.610, 0.355, 1.000)',
-            easeOutQuad: 'cubic-bezier(0.250, 0.460, 0.450, 0.940)',
-            easeOutQuart: 'cubic-bezier(0.165, 0.840, 0.440, 1.000)',
-            easeOutQuint: 'cubic-bezier(0.230, 1.000, 0.320, 1.000)',
-            easeOutSine: 'cubic-bezier(0.390, 0.575, 0.565, 1.000)',
-            easeOutExpo: 'cubic-bezier(0.190, 1.000, 0.220, 1.000)',
-            easeOutCirc: 'cubic-bezier(0.075, 0.820, 0.165, 1.000)',
-            easeOutBack: 'cubic-bezier(0.175, 0.885, 0.320, 1.275)',
-            easeInCubic: 'cubic-bezier(0.550, 0.055, 0.675, 0.190)',
-            easeInQuad: 'cubic-bezier(0.550, 0.085, 0.680, 0.530)',
-            easeInQuart: 'cubic-bezier(0.895, 0.030, 0.685, 0.220)',
-            easeInQuint: 'cubic-bezier(0.755, 0.050, 0.855, 0.060)',
-            easeInSine: 'cubic-bezier(0.470, 0.000, 0.745, 0.715)',
-            easeInCirc: 'cubic-bezier(0.600, 0.040, 0.980, 0.335)',
-            easeInBack: 'cubic-bezier(0.600, -0.280, 0.735, 0.045)',
-            easeInOutCubic: 'cubic-bezier(0.645, 0.045, 0.355, 1.000)',
-            easeInOutQuad: 'cubic-bezier(0.455, 0.030, 0.515, 0.955)',
-            easeInOutQuart: 'cubic-bezier(0.770, 0.000, 0.175, 1.000)',
-            easeInOutQuint: 'cubic-bezier(0.860, 0.000, 0.070, 1.000)',
-            easeInOutSine: 'cubic-bezier(0.445, 0.050, 0.550, 0.950)',
-            easeInOutExpo: 'cubic-bezier(1.000, 0.000, 0.000, 1.000)',
-            easeInOutCirc: 'cubic-bezier(0.785, 0.135, 0.150, 0.860)',
-            easeInOutBack: 'cubic-bezier(0.680, -0.550, 0.265, 1.550)',
-            easeInOut: 'cubic-bezier(0.420, 0.000, 0.580, 1.000)',
-            linear: 'linear'
-        };
-        var tweens = [];
-
-        Render.start(updateTweens);
-
-        function updateTweens(t) {
-            for (var i = tweens.length - 1; i >= 0; i--) {
-                var tween = tweens[i];
-                if (tween.update) tween.update(t);else self.removeMathTween(tween);
-            }
-        }
-
-        this.addMathTween = function (tween) {
-            tweens.push(tween);
-        };
-
-        this.removeMathTween = function (tween) {
-            tweens.remove(tween);
-        };
     }
 
-    _createClass(TweenManager, [{
+    _createClass(TweenManager, null, [{
+        key: 'init',
+        value: function init() {
+            var self = this;
+            this.TRANSFORMS = ['x', 'y', 'z', 'scale', 'scaleX', 'scaleY', 'rotation', 'rotationX', 'rotationY', 'rotationZ', 'skewX', 'skewY', 'perspective'];
+            this.CSS_EASES = {
+                easeOutCubic: 'cubic-bezier(0.215, 0.610, 0.355, 1.000)',
+                easeOutQuad: 'cubic-bezier(0.250, 0.460, 0.450, 0.940)',
+                easeOutQuart: 'cubic-bezier(0.165, 0.840, 0.440, 1.000)',
+                easeOutQuint: 'cubic-bezier(0.230, 1.000, 0.320, 1.000)',
+                easeOutSine: 'cubic-bezier(0.390, 0.575, 0.565, 1.000)',
+                easeOutExpo: 'cubic-bezier(0.190, 1.000, 0.220, 1.000)',
+                easeOutCirc: 'cubic-bezier(0.075, 0.820, 0.165, 1.000)',
+                easeOutBack: 'cubic-bezier(0.175, 0.885, 0.320, 1.275)',
+                easeInCubic: 'cubic-bezier(0.550, 0.055, 0.675, 0.190)',
+                easeInQuad: 'cubic-bezier(0.550, 0.085, 0.680, 0.530)',
+                easeInQuart: 'cubic-bezier(0.895, 0.030, 0.685, 0.220)',
+                easeInQuint: 'cubic-bezier(0.755, 0.050, 0.855, 0.060)',
+                easeInSine: 'cubic-bezier(0.470, 0.000, 0.745, 0.715)',
+                easeInCirc: 'cubic-bezier(0.600, 0.040, 0.980, 0.335)',
+                easeInBack: 'cubic-bezier(0.600, -0.280, 0.735, 0.045)',
+                easeInOutCubic: 'cubic-bezier(0.645, 0.045, 0.355, 1.000)',
+                easeInOutQuad: 'cubic-bezier(0.455, 0.030, 0.515, 0.955)',
+                easeInOutQuart: 'cubic-bezier(0.770, 0.000, 0.175, 1.000)',
+                easeInOutQuint: 'cubic-bezier(0.860, 0.000, 0.070, 1.000)',
+                easeInOutSine: 'cubic-bezier(0.445, 0.050, 0.550, 0.950)',
+                easeInOutExpo: 'cubic-bezier(1.000, 0.000, 0.000, 1.000)',
+                easeInOutCirc: 'cubic-bezier(0.785, 0.135, 0.150, 0.860)',
+                easeInOutBack: 'cubic-bezier(0.680, -0.550, 0.265, 1.550)',
+                easeInOut: 'cubic-bezier(0.420, 0.000, 0.580, 1.000)',
+                linear: 'linear'
+            };
+            var tweens = [];
+
+            Render.start(updateTweens);
+
+            function updateTweens(t) {
+                for (var i = tweens.length - 1; i >= 0; i--) {
+                    var tween = tweens[i];
+                    if (tween.update) tween.update(t);else self.removeMathTween(tween);
+                }
+            }
+
+            this.addMathTween = function (tween) {
+                tweens.push(tween);
+            };
+
+            this.removeMathTween = function (tween) {
+                tweens.remove(tween);
+            };
+        }
+    }, {
         key: 'tween',
         value: function tween(object, props, time, ease, delay, callback, update) {
             if (typeof delay !== 'number') {
@@ -1264,9 +1364,9 @@ function () {
         value: function clearTween(object) {
             if (object.mathTween) object.mathTween.stop();
             if (object.mathTweens) {
-                var _tweens = object.mathTweens;
-                for (var i = _tweens.length - 1; i >= 0; i--) {
-                    var tween = _tweens[i];
+                var tweens = object.mathTweens;
+                for (var i = tweens.length - 1; i >= 0; i--) {
+                    var tween = tweens[i];
                     if (tween) tween.stop();
                 }
                 object.mathTweens = null;
@@ -1325,7 +1425,9 @@ function () {
     }]);
 
     return TweenManager;
-}())(); // Singleton pattern (IICE)
+}();
+
+TweenManager.init();
 
 /**
  * CSS3 transition animation.
@@ -1434,13 +1536,13 @@ var Interface = function () {
             if (typeof name === 'string') {
                 this.name = name;
                 this.type = type;
-                if (this.type === 'svg') {
+                if (type === 'svg') {
                     var qualifiedName = detached || 'svg';
                     detached = true;
                     this.element = document.createElementNS('http://www.w3.org/2000/svg', qualifiedName);
                     this.element.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', 'http://www.w3.org/1999/xlink');
                 } else {
-                    this.element = document.createElement(this.type);
+                    this.element = document.createElement(type);
                     if (name[0] !== '.') this.element.id = name;else this.element.className = name.substr(1);
                 }
                 this.element.style.position = 'absolute';
@@ -2033,73 +2135,56 @@ var Interface = function () {
 }();
 
 /**
- * Stage reference class.
+ * Stage instance.
  *
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Stage = new ( // Singleton pattern (IICE)
+var Stage = new Interface('Stage');
+Stage.css({ overflow: 'hidden' });
 
-function (_Interface) {
-    _inherits(Stage, _Interface);
+window.addEventListener('load', function () {
+    var last = void 0;
 
-    function Stage() {
-        _classCallCheck(this, Stage);
+    window.addEventListener('focus', focus, true);
+    window.addEventListener('blur', blur, true);
+    window.addEventListener('keydown', function (e) {
+        return Events.emitter.fire(Events.KEYBOARD_DOWN, e);
+    }, true);
+    window.addEventListener('keyup', function (e) {
+        return Events.emitter.fire(Events.KEYBOARD_UP, e);
+    }, true);
+    window.addEventListener('keypress', function (e) {
+        return Events.emitter.fire(Events.KEYBOARD_PRESS, e);
+    }, true);
+    window.addEventListener('resize', function () {
+        return Events.emitter.fire(Events.RESIZE);
+    }, true);
+    window.addEventListener('orientationchange', function () {
+        return Events.emitter.fire(Events.RESIZE);
+    }, true);
+    Stage.events.add(Events.RESIZE, resize);
+    resize();
 
-        var _this11 = _possibleConstructorReturn(this, (Stage.__proto__ || Object.getPrototypeOf(Stage)).call(this, 'Stage'));
-
-        var self = _this11;
-        var last = void 0;
-
-        initHTML();
-        addListeners();
-
-        function initHTML() {
-            self.css({ overflow: 'hidden' });
+    function focus() {
+        if (last !== 'focus') {
+            last = 'focus';
+            Events.emitter.fire(Events.VISIBILITY, { type: 'focus' });
         }
-
-        function addListeners() {
-            window.addEventListener('focus', focus, true);
-            window.addEventListener('blur', blur, true);
-            window.addEventListener('keydown', function (e) {
-                return self.events.fire(Events.KEYBOARD_DOWN, e);
-            }, true);
-            window.addEventListener('keyup', function (e) {
-                return self.events.fire(Events.KEYBOARD_UP, e);
-            }, true);
-            window.addEventListener('keypress', function (e) {
-                return self.events.fire(Events.KEYBOARD_PRESS, e);
-            }, true);
-            window.addEventListener('resize', function () {
-                return self.events.fire(Events.RESIZE);
-            }, true);
-            self.events.add(Events.RESIZE, resize);
-            resize();
-        }
-
-        function focus() {
-            if (last !== 'focus') {
-                last = 'focus';
-                self.events.fire(Events.VISIBILITY, { type: 'focus' });
-            }
-        }
-
-        function blur() {
-            if (last !== 'blur') {
-                last = 'blur';
-                self.events.fire(Events.VISIBILITY, { type: 'blur' });
-            }
-        }
-
-        function resize() {
-            self.size();
-            self.orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
-        }
-        return _this11;
     }
 
-    return Stage;
-}(Interface))(); // Singleton pattern (IICE)
+    function blur() {
+        if (last !== 'blur') {
+            last = 'blur';
+            Events.emitter.fire(Events.VISIBILITY, { type: 'blur' });
+        }
+    }
+
+    function resize() {
+        Stage.size();
+        Stage.orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    }
+}, true);
 
 /**
  * 2D vector.
@@ -2318,7 +2403,7 @@ var Vector2 = function () {
  */
 
 var Interaction = function Interaction() {
-    var _this12 = this;
+    var _this11 = this;
 
     var object = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : Stage;
 
@@ -2397,7 +2482,7 @@ var Interaction = function Interaction() {
         self.delta.x = self.move.x = self.velocity.x = 0;
         self.delta.y = self.move.y = self.velocity.y = 0;
         distance = 0;
-        self.events.fire(Interaction.START, e);
+        self.events.fire(Interaction.START, e, true);
         timeDown = timeMove = Render.TIME;
     }
 
@@ -2417,8 +2502,8 @@ var Interaction = function Interaction() {
         timeMove = Render.TIME;
         self.velocity.x = Math.abs(self.delta.x) / delta;
         self.velocity.y = Math.abs(self.delta.y) / delta;
-        self.events.fire(Interaction.MOVE, e);
-        if (self.isTouching) self.events.fire(Interaction.DRAG, e);
+        self.events.fire(Interaction.MOVE, e, true);
+        if (self.isTouching) self.events.fire(Interaction.DRAG, e, true);
     }
 
     function up(e) {
@@ -2431,8 +2516,8 @@ var Interaction = function Interaction() {
             self.delta.x = 0;
             self.delta.y = 0;
         }
-        self.events.fire(Interaction.END, e);
-        if (distance < 20 && Render.TIME - timeDown < 2000) self.events.fire(Interaction.CLICK, e);
+        self.events.fire(Interaction.END, e, true);
+        if (distance < 20 && Render.TIME - timeDown < 2000) self.events.fire(Interaction.CLICK, e, true);
     }
 
     this.destroy = function () {
@@ -2440,8 +2525,8 @@ var Interaction = function Interaction() {
         Interaction.unbind('touchmove', move);
         Interaction.unbind('touchend', up);
         if (object !== Stage && object.unbind) object.unbind('touchstart', down);
-        _this12.events.destroy();
-        return Utils.nullObject(_this12);
+        _this11.events.destroy();
+        return Utils.nullObject(_this11);
     };
 };
 
@@ -2451,123 +2536,128 @@ var Interaction = function Interaction() {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Accelerometer = new // Singleton pattern (IICE)
+var Accelerometer = function () {
+    function Accelerometer() {
+        _classCallCheck(this, Accelerometer);
+    }
 
-function Accelerometer() {
-    _classCallCheck(this, Accelerometer);
+    _createClass(Accelerometer, null, [{
+        key: 'init',
+        value: function init() {
+            var self = this;
+            this.x = 0;
+            this.y = 0;
+            this.z = 0;
+            this.alpha = 0;
+            this.beta = 0;
+            this.gamma = 0;
+            this.heading = 0;
+            this.rotationRate = {};
+            this.rotationRate.alpha = 0;
+            this.rotationRate.beta = 0;
+            this.rotationRate.gamma = 0;
+            this.toRadians = Device.os === 'ios' ? Math.PI / 180 : 1;
 
-    var self = this;
-    this.x = 0;
-    this.y = 0;
-    this.z = 0;
-    this.alpha = 0;
-    this.beta = 0;
-    this.gamma = 0;
-    this.heading = 0;
-    this.rotationRate = {};
-    this.rotationRate.alpha = 0;
-    this.rotationRate.beta = 0;
-    this.rotationRate.gamma = 0;
-    this.toRadians = Device.os === 'ios' ? Math.PI / 180 : 1;
+            window.addEventListener('devicemotion', updateAccel, true);
+            window.addEventListener('deviceorientation', updateOrientation, true);
 
-    function updateAccel(e) {
-        switch (window.orientation) {
-            case 0:
-                self.x = -e.accelerationIncludingGravity.x;
-                self.y = e.accelerationIncludingGravity.y;
-                self.z = e.accelerationIncludingGravity.z;
-                if (e.rotationRate) {
-                    self.rotationRate.alpha = e.rotationRate.beta * self.toRadians;
-                    self.rotationRate.beta = -e.rotationRate.alpha * self.toRadians;
-                    self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
+            function updateAccel(e) {
+                switch (window.orientation) {
+                    case 0:
+                        self.x = -e.accelerationIncludingGravity.x;
+                        self.y = e.accelerationIncludingGravity.y;
+                        self.z = e.accelerationIncludingGravity.z;
+                        if (e.rotationRate) {
+                            self.rotationRate.alpha = e.rotationRate.beta * self.toRadians;
+                            self.rotationRate.beta = -e.rotationRate.alpha * self.toRadians;
+                            self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
+                        }
+                        break;
+                    case 180:
+                        self.x = e.accelerationIncludingGravity.x;
+                        self.y = -e.accelerationIncludingGravity.y;
+                        self.z = e.accelerationIncludingGravity.z;
+                        if (e.rotationRate) {
+                            self.rotationRate.alpha = -e.rotationRate.beta * self.toRadians;
+                            self.rotationRate.beta = e.rotationRate.alpha * self.toRadians;
+                            self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
+                        }
+                        break;
+                    case 90:
+                        self.x = e.accelerationIncludingGravity.y;
+                        self.y = e.accelerationIncludingGravity.x;
+                        self.z = e.accelerationIncludingGravity.z;
+                        if (e.rotationRate) {
+                            self.rotationRate.alpha = e.rotationRate.alpha * self.toRadians;
+                            self.rotationRate.beta = e.rotationRate.beta * self.toRadians;
+                            self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
+                        }
+                        break;
+                    case -90:
+                        self.x = -e.accelerationIncludingGravity.y;
+                        self.y = -e.accelerationIncludingGravity.x;
+                        self.z = e.accelerationIncludingGravity.z;
+                        if (e.rotationRate) {
+                            self.rotationRate.alpha = -e.rotationRate.alpha * self.toRadians;
+                            self.rotationRate.beta = -e.rotationRate.beta * self.toRadians;
+                            self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
+                        }
+                        break;
                 }
-                break;
-            case 180:
-                self.x = e.accelerationIncludingGravity.x;
-                self.y = -e.accelerationIncludingGravity.y;
-                self.z = e.accelerationIncludingGravity.z;
-                if (e.rotationRate) {
-                    self.rotationRate.alpha = -e.rotationRate.beta * self.toRadians;
-                    self.rotationRate.beta = e.rotationRate.alpha * self.toRadians;
-                    self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
+            }
+
+            function updateOrientation(e) {
+                for (var key in e) {
+                    if (~key.toLowerCase().indexOf('heading')) self.heading = e[key];
+                }switch (window.orientation) {
+                    case 0:
+                        self.alpha = e.beta * self.toRadians;
+                        self.beta = -e.alpha * self.toRadians;
+                        self.gamma = e.gamma * self.toRadians;
+                        break;
+                    case 180:
+                        self.alpha = -e.beta * self.toRadians;
+                        self.beta = e.alpha * self.toRadians;
+                        self.gamma = e.gamma * self.toRadians;
+                        break;
+                    case 90:
+                        self.alpha = e.alpha * self.toRadians;
+                        self.beta = e.beta * self.toRadians;
+                        self.gamma = e.gamma * self.toRadians;
+                        break;
+                    case -90:
+                        self.alpha = -e.alpha * self.toRadians;
+                        self.beta = -e.beta * self.toRadians;
+                        self.gamma = e.gamma * self.toRadians;
+                        break;
                 }
-                break;
-            case 90:
-                self.x = e.accelerationIncludingGravity.y;
-                self.y = e.accelerationIncludingGravity.x;
-                self.z = e.accelerationIncludingGravity.z;
-                if (e.rotationRate) {
-                    self.rotationRate.alpha = e.rotationRate.alpha * self.toRadians;
-                    self.rotationRate.beta = e.rotationRate.beta * self.toRadians;
-                    self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
-                }
-                break;
-            case -90:
-                self.x = -e.accelerationIncludingGravity.y;
-                self.y = -e.accelerationIncludingGravity.x;
-                self.z = e.accelerationIncludingGravity.z;
-                if (e.rotationRate) {
-                    self.rotationRate.alpha = -e.rotationRate.alpha * self.toRadians;
-                    self.rotationRate.beta = -e.rotationRate.beta * self.toRadians;
-                    self.rotationRate.gamma = e.rotationRate.gamma * self.toRadians;
-                }
-                break;
+                self.tilt = e.beta * self.toRadians;
+                self.yaw = e.alpha * self.toRadians;
+                self.roll = -e.gamma * self.toRadians;
+                if (Device.os === 'Android') self.heading = compassHeading(e.alpha, e.beta, e.gamma);
+            }
+
+            function compassHeading(alpha, beta, gamma) {
+                var degtorad = Math.PI / 180,
+                    x = beta ? beta * degtorad : 0,
+                    y = gamma ? gamma * degtorad : 0,
+                    z = alpha ? alpha * degtorad : 0,
+                    cY = Math.cos(y),
+                    cZ = Math.cos(z),
+                    sX = Math.sin(x),
+                    sY = Math.sin(y),
+                    sZ = Math.sin(z),
+                    Vx = -cZ * sY - sZ * sX * cY,
+                    Vy = -sZ * sY + cZ * sX * cY;
+                var compassHeading = Math.atan(Vx / Vy);
+                if (Vy < 0) compassHeading += Math.PI;else if (Vx < 0) compassHeading += 2 * Math.PI;
+                return compassHeading * (180 / Math.PI);
+            }
         }
-    }
+    }]);
 
-    function updateOrientation(e) {
-        for (var key in e) {
-            if (~key.toLowerCase().indexOf('heading')) self.heading = e[key];
-        }switch (window.orientation) {
-            case 0:
-                self.alpha = e.beta * self.toRadians;
-                self.beta = -e.alpha * self.toRadians;
-                self.gamma = e.gamma * self.toRadians;
-                break;
-            case 180:
-                self.alpha = -e.beta * self.toRadians;
-                self.beta = e.alpha * self.toRadians;
-                self.gamma = e.gamma * self.toRadians;
-                break;
-            case 90:
-                self.alpha = e.alpha * self.toRadians;
-                self.beta = e.beta * self.toRadians;
-                self.gamma = e.gamma * self.toRadians;
-                break;
-            case -90:
-                self.alpha = -e.alpha * self.toRadians;
-                self.beta = -e.beta * self.toRadians;
-                self.gamma = e.gamma * self.toRadians;
-                break;
-        }
-        self.tilt = e.beta * self.toRadians;
-        self.yaw = e.alpha * self.toRadians;
-        self.roll = -e.gamma * self.toRadians;
-        if (Device.os === 'Android') self.heading = compassHeading(e.alpha, e.beta, e.gamma);
-    }
-
-    function compassHeading(alpha, beta, gamma) {
-        var degtorad = Math.PI / 180,
-            x = beta ? beta * degtorad : 0,
-            y = gamma ? gamma * degtorad : 0,
-            z = alpha ? alpha * degtorad : 0,
-            cY = Math.cos(y),
-            cZ = Math.cos(z),
-            sX = Math.sin(x),
-            sY = Math.sin(y),
-            sZ = Math.sin(z),
-            Vx = -cZ * sY - sZ * sX * cY,
-            Vy = -sZ * sY + cZ * sX * cY;
-        var compassHeading = Math.atan(Vx / Vy);
-        if (Vy < 0) compassHeading += Math.PI;else if (Vx < 0) compassHeading += 2 * Math.PI;
-        return compassHeading * (180 / Math.PI);
-    }
-
-    this.init = function () {
-        window.addEventListener('devicemotion', updateAccel, true);
-        window.addEventListener('deviceorientation', updateOrientation, true);
-    };
-}(); // Singleton pattern (IICE)
+    return Accelerometer;
+}();
 
 /**
  * Mouse interaction.
@@ -2575,50 +2665,53 @@ function Accelerometer() {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Mouse = new // Singleton pattern (IICE)
-
-function Mouse() {
-    var _this13 = this;
-
-    _classCallCheck(this, Mouse);
-
-    var self = this;
-    this.x = 0;
-    this.y = 0;
-    this.normal = {
-        x: 0,
-        y: 0
-    };
-    this.tilt = {
-        x: 0,
-        y: 0
-    };
-    this.inverseNormal = {
-        x: 0,
-        y: 0
-    };
-
-    function update(e) {
-        self.x = e.x;
-        self.y = e.y;
-        self.normal.x = e.x / Stage.width;
-        self.normal.y = e.y / Stage.height;
-        self.tilt.x = self.normal.x * 2 - 1;
-        self.tilt.y = 1 - self.normal.y * 2;
-        self.inverseNormal.x = self.normal.x;
-        self.inverseNormal.y = 1 - self.normal.y;
+var Mouse = function () {
+    function Mouse() {
+        _classCallCheck(this, Mouse);
     }
 
-    this.init = function () {
-        _this13.input = new Interaction();
-        _this13.input.events.add(Interaction.START, update);
-        _this13.input.events.add(Interaction.MOVE, update);
-        update({
-            x: Stage.width / 2,
-            y: Stage.height / 2
-        });
-    };
-}(); // Singleton pattern (IICE)
+    _createClass(Mouse, null, [{
+        key: 'init',
+        value: function init() {
+            var self = this;
+            this.x = 0;
+            this.y = 0;
+            this.normal = {
+                x: 0,
+                y: 0
+            };
+            this.tilt = {
+                x: 0,
+                y: 0
+            };
+            this.inverseNormal = {
+                x: 0,
+                y: 0
+            };
+
+            this.input = new Interaction();
+            Stage.events.add(this.input, Interaction.START, update);
+            Stage.events.add(this.input, Interaction.MOVE, update);
+            update({
+                x: Stage.width / 2,
+                y: Stage.height / 2
+            });
+
+            function update(e) {
+                self.x = e.x;
+                self.y = e.y;
+                self.normal.x = e.x / Stage.width;
+                self.normal.y = e.y / Stage.height;
+                self.tilt.x = self.normal.x * 2 - 1;
+                self.tilt.y = 1 - self.normal.y * 2;
+                self.inverseNormal.x = self.normal.x;
+                self.inverseNormal.y = 1 - self.normal.y;
+            }
+        }
+    }]);
+
+    return Mouse;
+}();
 
 /**
  * Image helper class with promise method.
@@ -2626,38 +2719,39 @@ function Mouse() {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Assets = new ( // Singleton pattern (IICE)
-
-function () {
+var Assets = function () {
     function Assets() {
-        var _this14 = this;
-
         _classCallCheck(this, Assets);
-
-        this.CDN = '';
-        this.CORS = null;
-        var images = {};
-
-        this.createImage = function (src, store, callback) {
-            if (typeof store !== 'boolean') {
-                callback = store;
-                store = undefined;
-            }
-            var img = new Image();
-            img.crossOrigin = _this14.CORS;
-            img.src = src;
-            img.onload = callback;
-            img.onerror = callback;
-            if (store) images[src] = img;
-            return img;
-        };
-
-        this.getImage = function (src) {
-            return images[src];
-        };
     }
 
-    _createClass(Assets, [{
+    _createClass(Assets, null, [{
+        key: 'init',
+        value: function init() {
+            var _this12 = this;
+
+            this.CDN = '';
+            this.CORS = null;
+            var images = {};
+
+            this.createImage = function (src, store, callback) {
+                if (typeof store !== 'boolean') {
+                    callback = store;
+                    store = undefined;
+                }
+                var img = new Image();
+                img.crossOrigin = _this12.CORS;
+                img.src = src;
+                img.onload = callback;
+                img.onerror = callback;
+                if (store) images[src] = img;
+                return img;
+            };
+
+            this.getImage = function (src) {
+                return images[src];
+            };
+        }
+    }, {
         key: 'loadImage',
         value: function loadImage(img) {
             if (typeof img === 'string') img = this.createImage(img);
@@ -2669,7 +2763,9 @@ function () {
     }]);
 
     return Assets;
-}())(); // Singleton pattern (IICE)
+}();
+
+Assets.init();
 
 /**
  * Asset loader with promise method.
@@ -2683,7 +2779,7 @@ var AssetLoader = function (_Component) {
     function AssetLoader(assets, callback) {
         _classCallCheck(this, AssetLoader);
 
-        var _this15 = _possibleConstructorReturn(this, (AssetLoader.__proto__ || Object.getPrototypeOf(AssetLoader)).call(this));
+        var _this13 = _possibleConstructorReturn(this, (AssetLoader.__proto__ || Object.getPrototypeOf(AssetLoader)).call(this));
 
         if (Array.isArray(assets)) {
             assets = function () {
@@ -2696,8 +2792,8 @@ var AssetLoader = function (_Component) {
                 }, {});
             }();
         }
-        var self = _this15;
-        _this15.events = new Events();
+        var self = _this13;
+        _this13.events = new Events();
         var total = Object.keys(assets).length;
         var loaded = 0;
 
@@ -2724,15 +2820,15 @@ var AssetLoader = function (_Component) {
 
         function assetLoaded() {
             self.percent = ++loaded / total;
-            self.events.fire(Events.PROGRESS, { percent: self.percent });
+            self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
             if (loaded === total) complete();
         }
 
         function complete() {
-            self.events.fire(Events.COMPLETE);
+            self.events.fire(Events.COMPLETE, null, true);
             if (callback) callback();
         }
-        return _this15;
+        return _this13;
     }
 
     _createClass(AssetLoader, null, [{
@@ -2760,10 +2856,10 @@ var MultiLoader = function (_Component2) {
     function MultiLoader() {
         _classCallCheck(this, MultiLoader);
 
-        var _this16 = _possibleConstructorReturn(this, (MultiLoader.__proto__ || Object.getPrototypeOf(MultiLoader)).call(this));
+        var _this14 = _possibleConstructorReturn(this, (MultiLoader.__proto__ || Object.getPrototypeOf(MultiLoader)).call(this));
 
-        var self = _this16;
-        _this16.events = new Events();
+        var self = _this14;
+        _this14.events = new Events();
         var loaders = [];
         var loaded = 0;
 
@@ -2772,24 +2868,24 @@ var MultiLoader = function (_Component2) {
             for (var i = 0; i < loaders.length; i++) {
                 percent += loaders[i].percent || 0;
             }percent /= loaders.length;
-            self.events.fire(Events.PROGRESS, { percent: percent });
+            self.events.fire(Events.PROGRESS, { percent: percent }, true);
         }
 
         function complete() {
-            if (++loaded === loaders.length) self.events.fire(Events.COMPLETE);
+            if (++loaded === loaders.length) self.events.fire(Events.COMPLETE, null, true);
         }
 
-        _this16.push = function (loader) {
+        _this14.push = function (loader) {
             loaders.push(loader);
-            loader.events.add(Events.PROGRESS, progress);
-            loader.events.add(Events.COMPLETE, complete);
+            _this14.events.add(loader, Events.PROGRESS, progress);
+            _this14.events.add(loader, Events.COMPLETE, complete);
         };
 
-        _this16.complete = function () {
-            _this16.events.fire(Events.PROGRESS, { percent: 1 });
-            _this16.events.fire(Events.COMPLETE);
+        _this14.complete = function () {
+            _this14.events.fire(Events.PROGRESS, { percent: 1 }, true);
+            _this14.events.fire(Events.COMPLETE, null, true);
         };
-        return _this16;
+        return _this14;
     }
 
     return MultiLoader;
@@ -2807,10 +2903,10 @@ var FontLoader = function (_Component3) {
     function FontLoader(fonts, callback) {
         _classCallCheck(this, FontLoader);
 
-        var _this17 = _possibleConstructorReturn(this, (FontLoader.__proto__ || Object.getPrototypeOf(FontLoader)).call(this));
+        var _this15 = _possibleConstructorReturn(this, (FontLoader.__proto__ || Object.getPrototypeOf(FontLoader)).call(this));
 
-        var self = _this17;
-        _this17.events = new Events();
+        var self = _this15;
+        _this15.events = new Events();
         var element = void 0;
 
         initFonts();
@@ -2828,13 +2924,13 @@ var FontLoader = function (_Component3) {
             var ready = function ready() {
                 element.destroy();
                 self.percent = 1;
-                self.events.fire(Events.PROGRESS, { percent: self.percent });
-                self.events.fire(Events.COMPLETE);
+                self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
+                self.events.fire(Events.COMPLETE, null, true);
                 if (callback) callback();
             };
             if (document.fonts && document.fonts.ready) document.fonts.ready.then(ready);else self.delayedCall(ready, 500);
         }
-        return _this17;
+        return _this15;
     }
 
     _createClass(FontLoader, null, [{
@@ -2857,7 +2953,7 @@ var FontLoader = function (_Component3) {
  */
 
 var StateDispatcher = function StateDispatcher(forceHash) {
-    var _this18 = this;
+    var _this16 = this;
 
     _classCallCheck(this, StateDispatcher);
 
@@ -2889,7 +2985,7 @@ var StateDispatcher = function StateDispatcher(forceHash) {
             if (!self.locked) {
                 storePath = path;
                 storeState = state;
-                self.events.fire(Events.UPDATE, { value: state, path: path, split: path.split('/') });
+                self.events.fire(Events.UPDATE, { value: state, path: path }, true);
             } else if (storePath) {
                 if (forceHash) location.hash = '!/' + storePath;else history.pushState(storeState, null, rootPath + storePath);
             }
@@ -2898,7 +2994,7 @@ var StateDispatcher = function StateDispatcher(forceHash) {
 
     this.getState = function () {
         var path = getPath();
-        return { value: storeState, path: path, split: path.split('/') };
+        return { value: storeState, path: path };
     };
 
     this.setState = function (state, path) {
@@ -2930,11 +3026,11 @@ var StateDispatcher = function StateDispatcher(forceHash) {
     };
 
     this.lock = function () {
-        return _this18.locked = true;
+        return _this16.locked = true;
     };
 
     this.unlock = function () {
-        return _this18.locked = false;
+        return _this16.locked = false;
     };
 
     this.forceHash = function () {
@@ -2952,14 +3048,12 @@ var StateDispatcher = function StateDispatcher(forceHash) {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var Storage = new ( // Singleton pattern (IICE)
-
-function () {
+var Storage = function () {
     function Storage() {
         _classCallCheck(this, Storage);
     }
 
-    _createClass(Storage, [{
+    _createClass(Storage, null, [{
         key: 'set',
         value: function set(key, value) {
             if (value !== null && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object') value = JSON.stringify(value);
@@ -2980,7 +3074,7 @@ function () {
     }]);
 
     return Storage;
-}())(); // Singleton pattern (IICE)
+}();
 
 /**
  * Web audio engine.
@@ -2990,108 +3084,113 @@ function () {
 
 if (!window.AudioContext) window.AudioContext = window.webkitAudioContext || window.mozAudioContext || window.oAudioContext;
 
-var WebAudio = new // Singleton pattern (IICE)
+var WebAudio = function () {
+    function WebAudio() {
+        _classCallCheck(this, WebAudio);
+    }
 
-function WebAudio() {
-    var _this19 = this;
+    _createClass(WebAudio, null, [{
+        key: 'init',
+        value: function init() {
+            var _this17 = this;
 
-    _classCallCheck(this, WebAudio);
+            var self = this;
+            var sounds = {};
+            var context = void 0;
 
-    var self = this;
-    var sounds = {};
-    var context = void 0;
+            if (window.AudioContext) context = new AudioContext();
+            if (!context) return;
+            this.globalGain = context.createGain();
+            this.globalGain.connect(context.destination);
+            this.globalGain.value = this.globalGain.gain.defaultValue;
+            this.gain = {
+                set value(value) {
+                    self.globalGain.value = value;
+                    self.globalGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
+                },
+                get value() {
+                    return self.globalGain.value;
+                }
+            };
 
-    this.init = function () {
-        if (window.AudioContext) context = new AudioContext();
-        if (!context) return;
-        _this19.globalGain = context.createGain();
-        _this19.globalGain.connect(context.destination);
-        _this19.globalGain.value = _this19.globalGain.gain.defaultValue;
-        _this19.gain = {
-            set value(value) {
-                self.globalGain.value = value;
-                self.globalGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
-            },
-            get value() {
-                return self.globalGain.value;
-            }
-        };
-    };
-
-    this.loadSound = function (id, callback) {
-        var promise = Promise.create();
-        if (callback) promise.then(callback);
-        callback = promise.resolve;
-        var sound = _this19.getSound(id);
-        window.fetch(sound.asset).then(function (response) {
-            if (!response.ok) return callback();
-            response.arrayBuffer().then(function (data) {
-                context.decodeAudioData(data, function (buffer) {
-                    sound.buffer = buffer;
-                    sound.complete = true;
+            this.loadSound = function (id, callback) {
+                var promise = Promise.create();
+                if (callback) promise.then(callback);
+                callback = promise.resolve;
+                var sound = _this17.getSound(id);
+                window.fetch(sound.asset).then(function (response) {
+                    if (!response.ok) return callback();
+                    response.arrayBuffer().then(function (data) {
+                        context.decodeAudioData(data, function (buffer) {
+                            sound.buffer = buffer;
+                            sound.complete = true;
+                            callback();
+                        });
+                    });
+                }).catch(function () {
                     callback();
                 });
-            });
-        }).catch(function () {
-            callback();
-        });
-        sound.ready = function () {
-            return promise;
-        };
-    };
+                sound.ready = function () {
+                    return promise;
+                };
+            };
 
-    this.createSound = function (id, asset, callback) {
-        var sound = {};
-        sound.asset = asset;
-        sound.audioGain = context.createGain();
-        sound.audioGain.connect(_this19.globalGain);
-        sound.audioGain.value = sound.audioGain.gain.defaultValue;
-        sound.gain = {
-            set value(value) {
-                sound.audioGain.value = value;
-                sound.audioGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
-            },
-            get value() {
-                return sound.audioGain.value;
-            }
-        };
-        sounds[id] = sound;
-        if (Device.os === 'ios') callback();else _this19.loadSound(id, callback);
-    };
+            this.createSound = function (id, asset, callback) {
+                var sound = {};
+                sound.asset = asset;
+                sound.audioGain = context.createGain();
+                sound.audioGain.connect(_this17.globalGain);
+                sound.audioGain.value = sound.audioGain.gain.defaultValue;
+                sound.gain = {
+                    set value(value) {
+                        sound.audioGain.value = value;
+                        sound.audioGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
+                    },
+                    get value() {
+                        return sound.audioGain.value;
+                    }
+                };
+                sounds[id] = sound;
+                if (Device.os === 'ios') callback();else _this17.loadSound(id, callback);
+            };
 
-    this.getSound = function (id) {
-        return sounds[id];
-    };
+            this.getSound = function (id) {
+                return sounds[id];
+            };
 
-    this.trigger = function (id) {
-        if (!context) return;
-        if (context.state === 'suspended') context.resume();
-        var sound = _this19.getSound(id);
-        if (!sound.ready) _this19.loadSound(id);
-        sound.ready().then(function () {
-            if (sound.complete) {
-                var source = context.createBufferSource();
-                source.buffer = sound.buffer;
-                source.connect(sound.audioGain);
-                sound.audioGain.gain.setValueAtTime(sound.audioGain.value, context.currentTime);
-                source.loop = !!sound.loop;
-                source.start(0);
-            }
-        });
-    };
+            this.trigger = function (id) {
+                if (!context) return;
+                if (context.state === 'suspended') context.resume();
+                var sound = _this17.getSound(id);
+                if (!sound.ready) _this17.loadSound(id);
+                sound.ready().then(function () {
+                    if (sound.complete) {
+                        var source = context.createBufferSource();
+                        source.buffer = sound.buffer;
+                        source.connect(sound.audioGain);
+                        sound.audioGain.gain.setValueAtTime(sound.audioGain.value, context.currentTime);
+                        source.loop = !!sound.loop;
+                        source.start(0);
+                    }
+                });
+            };
 
-    this.mute = function () {
-        if (!context) return;
-        TweenManager.tween(_this19.gain, { value: 0 }, 300, 'easeOutSine');
-    };
+            this.mute = function () {
+                if (!context) return;
+                TweenManager.tween(_this17.gain, { value: 0 }, 300, 'easeOutSine');
+            };
 
-    this.unmute = function () {
-        if (!context) return;
-        TweenManager.tween(_this19.gain, { value: 1 }, 500, 'easeOutSine');
-    };
+            this.unmute = function () {
+                if (!context) return;
+                TweenManager.tween(_this17.gain, { value: 1 }, 500, 'easeOutSine');
+            };
 
-    window.WebAudio = this;
-}(); // Singleton pattern (IICE)
+            window.WebAudio = this;
+        }
+    }]);
+
+    return WebAudio;
+}();
 
 /**
  * Canvas values.
@@ -3386,12 +3485,12 @@ var CanvasGraphics = function (_CanvasObject) {
 
         _classCallCheck(this, CanvasGraphics);
 
-        var _this20 = _possibleConstructorReturn(this, (CanvasGraphics.__proto__ || Object.getPrototypeOf(CanvasGraphics)).call(this));
+        var _this18 = _possibleConstructorReturn(this, (CanvasGraphics.__proto__ || Object.getPrototypeOf(CanvasGraphics)).call(this));
 
-        var self = _this20;
-        _this20.width = w;
-        _this20.height = h;
-        _this20.props = {};
+        var self = _this18;
+        _this18.width = w;
+        _this18.height = h;
+        _this18.props = {};
         var draw = [],
             mask = void 0;
 
@@ -3401,14 +3500,14 @@ var CanvasGraphics = function (_CanvasObject) {
             }
         }
 
-        _this20.draw = function (override) {
-            if (_this20.isMask() && !override) return false;
-            var context = _this20.canvas.context;
-            _this20.startDraw(_this20.px, _this20.py, override);
+        _this18.draw = function (override) {
+            if (_this18.isMask() && !override) return false;
+            var context = _this18.canvas.context;
+            _this18.startDraw(_this18.px, _this18.py, override);
             setProperties(context);
-            if (_this20.clipWidth && _this20.clipHeight) {
+            if (_this18.clipWidth && _this18.clipHeight) {
                 context.beginPath();
-                context.rect(_this20.clipX, _this20.clipY, _this20.clipWidth, _this20.clipHeight);
+                context.rect(_this18.clipX, _this18.clipY, _this18.clipWidth, _this18.clipHeight);
                 context.clip();
             }
             for (var i = 0; i < draw.length; i++) {
@@ -3418,24 +3517,24 @@ var CanvasGraphics = function (_CanvasObject) {
                 context[fn].apply(context, cmd);
                 cmd.unshift(fn);
             }
-            _this20.endDraw();
+            _this18.endDraw();
             if (mask) {
                 context.globalCompositeOperation = mask.blendMode;
                 mask.render(true);
             }
         };
 
-        _this20.clear = function () {
+        _this18.clear = function () {
             for (var i = draw.length - 1; i >= 0; i--) {
                 draw[i].length = 0;
             }draw.length = 0;
         };
 
-        _this20.arc = function () {
+        _this18.arc = function () {
             var x = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
             var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
             var endAngle = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
-            var radius = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : _this20.radius || _this20.width / 2;
+            var radius = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : _this18.radius || _this18.width / 2;
             var startAngle = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : 0;
             var counterclockwise = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : false;
 
@@ -3450,63 +3549,63 @@ var CanvasGraphics = function (_CanvasObject) {
             draw.push(['arc', x, y, radius, Math.radians(startAngle), Math.radians(endAngle), counterclockwise]);
         };
 
-        _this20.quadraticCurveTo = function (cpx, cpy, x, y) {
+        _this18.quadraticCurveTo = function (cpx, cpy, x, y) {
             draw.push(['quadraticCurveTo', cpx, cpy, x, y]);
         };
 
-        _this20.bezierCurveTo = function (cp1x, cp1y, cp2x, cp2y, x, y) {
+        _this18.bezierCurveTo = function (cp1x, cp1y, cp2x, cp2y, x, y) {
             draw.push(['bezierCurveTo', cp1x, cp1y, cp2x, cp2y, x, y]);
         };
 
-        _this20.fillRect = function (x, y, w, h) {
+        _this18.fillRect = function (x, y, w, h) {
             draw.push(['fillRect', x, y, w, h]);
         };
 
-        _this20.clearRect = function (x, y, w, h) {
+        _this18.clearRect = function (x, y, w, h) {
             draw.push(['clearRect', x, y, w, h]);
         };
 
-        _this20.strokeRect = function (x, y, w, h) {
+        _this18.strokeRect = function (x, y, w, h) {
             draw.push(['strokeRect', x, y, w, h]);
         };
 
-        _this20.moveTo = function (x, y) {
+        _this18.moveTo = function (x, y) {
             draw.push(['moveTo', x, y]);
         };
 
-        _this20.lineTo = function (x, y) {
+        _this18.lineTo = function (x, y) {
             draw.push(['lineTo', x, y]);
         };
 
-        _this20.stroke = function () {
+        _this18.stroke = function () {
             draw.push(['stroke']);
         };
 
-        _this20.fill = function () {
+        _this18.fill = function () {
             if (!mask) draw.push(['fill']);
         };
 
-        _this20.beginPath = function () {
+        _this18.beginPath = function () {
             draw.push(['beginPath']);
         };
 
-        _this20.closePath = function () {
+        _this18.closePath = function () {
             draw.push(['closePath']);
         };
 
-        _this20.fillText = function (text, x, y) {
+        _this18.fillText = function (text, x, y) {
             draw.push(['fillText', text, x, y]);
         };
 
-        _this20.strokeText = function (text, x, y) {
+        _this18.strokeText = function (text, x, y) {
             draw.push(['strokeText', text, x, y]);
         };
 
-        _this20.setLineDash = function (value) {
+        _this18.setLineDash = function (value) {
             draw.push(['setLineDash', value]);
         };
 
-        _this20.drawImage = function (img) {
+        _this18.drawImage = function (img) {
             var sx = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
             var sy = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
             var sWidth = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : img.width;
@@ -3516,13 +3615,13 @@ var CanvasGraphics = function (_CanvasObject) {
             var dWidth = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : img.width;
             var dHeight = arguments.length > 8 && arguments[8] !== undefined ? arguments[8] : img.height;
 
-            draw.push(['drawImage', img, sx, sy, sWidth, sHeight, dx + -_this20.px, dy + -_this20.py, dWidth, dHeight]);
+            draw.push(['drawImage', img, sx, sy, sWidth, sHeight, dx + -_this18.px, dy + -_this18.py, dWidth, dHeight]);
         };
 
-        _this20.mask = function (object) {
+        _this18.mask = function (object) {
             if (!object) return mask = null;
             mask = object;
-            object.masked = _this20;
+            object.masked = _this18;
             for (var i = 0; i < draw.length; i++) {
                 if (draw[i][0] === 'fill' || draw[i][0] === 'stroke') {
                     draw[i].length = 0;
@@ -3531,21 +3630,21 @@ var CanvasGraphics = function (_CanvasObject) {
             }
         };
 
-        _this20.clone = function () {
-            var object = new CanvasGraphics(_this20.width, _this20.height);
-            object.visible = _this20.visible;
-            object.blendMode = _this20.blendMode;
-            object.opacity = _this20.opacity;
-            object.follow(_this20);
-            object.props = Utils.cloneObject(_this20.props);
+        _this18.clone = function () {
+            var object = new CanvasGraphics(_this18.width, _this18.height);
+            object.visible = _this18.visible;
+            object.blendMode = _this18.blendMode;
+            object.opacity = _this18.opacity;
+            object.follow(_this18);
+            object.props = Utils.cloneObject(_this18.props);
             object.setDraw(Utils.cloneArray(draw));
             return object;
         };
 
-        _this20.setDraw = function (array) {
+        _this18.setDraw = function (array) {
             draw = array;
         };
-        return _this20;
+        return _this18;
     }
 
     _createClass(CanvasGraphics, [{
@@ -3642,7 +3741,7 @@ var CanvasGraphics = function (_CanvasObject) {
 var Canvas = function Canvas(w) {
     var h = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : w;
 
-    var _this21 = this;
+    var _this19 = this;
 
     var retina = arguments[2];
     var whiteAlpha = arguments[3];
@@ -3683,55 +3782,55 @@ var Canvas = function Canvas(w) {
     this.size = size;
 
     this.toDataURL = function (type, quality) {
-        return _this21.element.toDataURL(type, quality);
+        return _this19.element.toDataURL(type, quality);
     };
 
     this.render = function (noClear) {
-        if (!(typeof noClear === 'boolean' && noClear)) _this21.clear();
-        for (var i = 0; i < _this21.children.length; i++) {
-            _this21.children[i].render();
+        if (!(typeof noClear === 'boolean' && noClear)) _this19.clear();
+        for (var i = 0; i < _this19.children.length; i++) {
+            _this19.children[i].render();
         }
     };
 
     this.clear = function () {
-        _this21.context.clearRect(0, 0, _this21.element.width, _this21.element.height);
+        _this19.context.clearRect(0, 0, _this19.element.width, _this19.element.height);
     };
 
     this.add = function (child) {
-        child.setCanvas(_this21);
-        child.parent = _this21;
-        _this21.children.push(child);
-        child.z = _this21.children.length;
+        child.setCanvas(_this19);
+        child.parent = _this19;
+        _this19.children.push(child);
+        child.z = _this19.children.length;
     };
 
     this.remove = function (child) {
         child.canvas = null;
         child.parent = null;
-        _this21.children.remove(child);
+        _this19.children.remove(child);
     };
 
     this.destroy = function () {
-        for (var i = _this21.children.length - 1; i >= 0; i--) {
-            _this21.children[i].destroy();
-        }_this21.object.destroy();
-        return Utils.nullObject(_this21);
+        for (var i = _this19.children.length - 1; i >= 0; i--) {
+            _this19.children[i].destroy();
+        }_this19.object.destroy();
+        return Utils.nullObject(_this19);
     };
 
     this.getImageData = function () {
         var x = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
         var y = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
-        var w = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : _this21.element.width;
-        var h = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : _this21.element.height;
+        var w = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : _this19.element.width;
+        var h = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : _this19.element.height;
 
-        _this21.imageData = _this21.context.getImageData(x, y, w, h);
-        return _this21.imageData;
+        _this19.imageData = _this19.context.getImageData(x, y, w, h);
+        return _this19.imageData;
     };
 
     this.getPixel = function (x, y, dirty) {
-        if (!_this21.imageData || dirty) _this21.getImageData();
+        if (!_this19.imageData || dirty) _this19.getImageData();
         var imgData = {},
-            index = (x + y * _this21.element.width) * 4,
-            pixels = _this21.imageData.data;
+            index = (x + y * _this19.element.width) * 4,
+            pixels = _this19.imageData.data;
         imgData.r = pixels[index];
         imgData.g = pixels[index + 1];
         imgData.b = pixels[index + 2];
@@ -3740,7 +3839,7 @@ var Canvas = function Canvas(w) {
     };
 
     this.putImageData = function (imageData) {
-        _this21.context.putImageData(imageData, 0, 0);
+        _this19.context.putImageData(imageData, 0, 0);
     };
 };
 
@@ -3750,93 +3849,98 @@ var Canvas = function Canvas(w) {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-var CanvasFont = new // Singleton pattern (IICE)
-
-function CanvasFont() {
-    _classCallCheck(this, CanvasFont);
-
-    function createText(canvas, width, height, str, font, fillStyle, textBaseline, letterSpacing, textAlign) {
-        var context = canvas.context,
-            graphics = new CanvasGraphics(width, height);
-        graphics.font = font;
-        graphics.fillStyle = fillStyle;
-        graphics.textBaseline = textBaseline;
-        graphics.totalWidth = 0;
-        graphics.totalHeight = height;
-        var characters = str.split('');
-        var chr = void 0,
-            index = 0,
-            currentPosition = 0;
-        context.font = font;
-        for (var i = 0; i < characters.length; i++) {
-            graphics.totalWidth += context.measureText(characters[i]).width + letterSpacing;
-        }switch (textAlign) {
-            case 'start':
-            case 'left':
-                currentPosition = 0;
-                break;
-            case 'end':
-            case 'right':
-                currentPosition = width - graphics.totalWidth;
-                break;
-            case 'center':
-                currentPosition = (width - graphics.totalWidth) / 2;
-                break;
-        }
-        do {
-            chr = characters[index++];
-            graphics.fillText(chr, currentPosition, 0);
-            currentPosition += context.measureText(chr).width + letterSpacing;
-        } while (index < str.length);
-        return graphics;
+var CanvasFont = function () {
+    function CanvasFont() {
+        _classCallCheck(this, CanvasFont);
     }
 
-    this.createText = function (canvas, width, height, str, font, fillStyle, _ref) {
-        var _ref$textBaseline = _ref.textBaseline,
-            textBaseline = _ref$textBaseline === undefined ? 'alphabetic' : _ref$textBaseline,
-            _ref$lineHeight = _ref.lineHeight,
-            lineHeight = _ref$lineHeight === undefined ? height : _ref$lineHeight,
-            _ref$letterSpacing = _ref.letterSpacing,
-            letterSpacing = _ref$letterSpacing === undefined ? 0 : _ref$letterSpacing,
-            _ref$textAlign = _ref.textAlign,
-            textAlign = _ref$textAlign === undefined ? 'start' : _ref$textAlign;
+    _createClass(CanvasFont, null, [{
+        key: 'createText',
+        value: function createText(canvas, width, height, str, font, fillStyle, _ref) {
+            var _ref$textBaseline = _ref.textBaseline,
+                textBaseline = _ref$textBaseline === undefined ? 'alphabetic' : _ref$textBaseline,
+                _ref$lineHeight = _ref.lineHeight,
+                lineHeight = _ref$lineHeight === undefined ? height : _ref$lineHeight,
+                _ref$letterSpacing = _ref.letterSpacing,
+                letterSpacing = _ref$letterSpacing === undefined ? 0 : _ref$letterSpacing,
+                _ref$textAlign = _ref.textAlign,
+                textAlign = _ref$textAlign === undefined ? 'start' : _ref$textAlign;
 
-        var context = canvas.context;
-        if (height === lineHeight) {
-            return createText(canvas, width, height, str, font, fillStyle, textBaseline, letterSpacing, textAlign);
-        } else {
-            var text = new CanvasGraphics(width, height),
-                words = str.split(' '),
-                lines = [];
-            var line = '';
-            text.totalWidth = 0;
-            text.totalHeight = 0;
-            context.font = font;
-            for (var n = 0; n < words.length; n++) {
-                var testLine = line + words[n] + ' ',
-                    characters = testLine.split('');
-                var testWidth = 0;
-                for (var i = 0; i < characters.length; i++) {
-                    testWidth += context.measureText(characters[i]).width + letterSpacing;
-                }if (testWidth > width && n > 0) {
-                    lines.push(line);
-                    line = words[n] + ' ';
-                } else {
-                    line = testLine;
+            var context = canvas.context;
+            if (height === lineHeight) {
+                return createText(canvas, width, height, str, font, fillStyle, textBaseline, letterSpacing, textAlign);
+            } else {
+                var text = new CanvasGraphics(width, height),
+                    words = str.split(' '),
+                    lines = [];
+                var line = '';
+                text.totalWidth = 0;
+                text.totalHeight = 0;
+                context.font = font;
+                for (var n = 0; n < words.length; n++) {
+                    var testLine = line + words[n] + ' ',
+                        characters = testLine.split('');
+                    var testWidth = 0;
+                    for (var i = 0; i < characters.length; i++) {
+                        testWidth += context.measureText(characters[i]).width + letterSpacing;
+                    }if (testWidth > width && n > 0) {
+                        lines.push(line);
+                        line = words[n] + ' ';
+                    } else {
+                        line = testLine;
+                    }
                 }
+                lines.push(line);
+                lines.forEach(function (line, i) {
+                    var graphics = createText(canvas, width, lineHeight, line.slice(0, -1), font, fillStyle, textBaseline, letterSpacing, textAlign);
+                    graphics.y = i * lineHeight;
+                    text.add(graphics);
+                    text.totalWidth = Math.max(graphics.totalWidth, text.totalWidth);
+                    text.totalHeight += lineHeight;
+                });
+                return text;
             }
-            lines.push(line);
-            lines.forEach(function (line, i) {
-                var graphics = createText(canvas, width, lineHeight, line.slice(0, -1), font, fillStyle, textBaseline, letterSpacing, textAlign);
-                graphics.y = i * lineHeight;
-                text.add(graphics);
-                text.totalWidth = Math.max(graphics.totalWidth, text.totalWidth);
-                text.totalHeight += lineHeight;
-            });
-            return text;
+
+            function createText(canvas, width, height, str, font, fillStyle, textBaseline, letterSpacing, textAlign) {
+                var context = canvas.context,
+                    graphics = new CanvasGraphics(width, height);
+                graphics.font = font;
+                graphics.fillStyle = fillStyle;
+                graphics.textBaseline = textBaseline;
+                graphics.totalWidth = 0;
+                graphics.totalHeight = height;
+                var characters = str.split('');
+                var chr = void 0,
+                    index = 0,
+                    currentPosition = 0;
+                context.font = font;
+                for (var _i3 = 0; _i3 < characters.length; _i3++) {
+                    graphics.totalWidth += context.measureText(characters[_i3]).width + letterSpacing;
+                }switch (textAlign) {
+                    case 'start':
+                    case 'left':
+                        currentPosition = 0;
+                        break;
+                    case 'end':
+                    case 'right':
+                        currentPosition = width - graphics.totalWidth;
+                        break;
+                    case 'center':
+                        currentPosition = (width - graphics.totalWidth) / 2;
+                        break;
+                }
+                do {
+                    chr = characters[index++];
+                    graphics.fillText(chr, currentPosition, 0);
+                    currentPosition += context.measureText(chr).width + letterSpacing;
+                } while (index < str.length);
+                return graphics;
+            }
         }
-    };
-}(); // Singleton pattern (IICE)
+    }]);
+
+    return CanvasFont;
+}();
 
 /**
  * Video interface.
@@ -3850,10 +3954,10 @@ var Video = function (_Component4) {
     function Video(params) {
         _classCallCheck(this, Video);
 
-        var _this22 = _possibleConstructorReturn(this, (Video.__proto__ || Object.getPrototypeOf(Video)).call(this));
+        var _this20 = _possibleConstructorReturn(this, (Video.__proto__ || Object.getPrototypeOf(Video)).call(this));
 
-        var self = _this22;
-        _this22.loaded = {
+        var self = _this20;
+        _this20.loaded = {
             start: 0,
             end: 0,
             percent: 0
@@ -3901,12 +4005,12 @@ var Video = function (_Component4) {
                 tick++;
                 if (tick > 30 && !buffering) {
                     buffering = true;
-                    self.events.fire(Events.ERROR);
+                    self.events.fire(Events.ERROR, null, true);
                 }
             } else {
                 tick = 0;
                 if (buffering) {
-                    self.events.fire(Events.READY);
+                    self.events.fire(Events.READY, null, true);
                     buffering = false;
                 }
             }
@@ -3914,13 +4018,13 @@ var Video = function (_Component4) {
             if (self.element.currentTime >= (self.duration || self.element.duration) - 0.001) {
                 if (!self.loop) {
                     if (!forceRender) self.stopRender(step);
-                    self.events.fire(Events.COMPLETE);
+                    self.events.fire(Events.COMPLETE, null, true);
                 }
             }
             event.time = self.element.currentTime;
             event.duration = self.element.duration;
             event.loaded = self.loaded;
-            self.events.fire(Events.UPDATE, event);
+            self.events.fire(Events.UPDATE, event, true);
         }
 
         function checkReady() {
@@ -3940,7 +4044,7 @@ var Video = function (_Component4) {
             }
             if (self.buffered) {
                 self.stopRender(checkReady);
-                self.events.fire(Events.READY);
+                self.events.fire(Events.READY, null, true);
             }
         }
 
@@ -3954,85 +4058,85 @@ var Video = function (_Component4) {
             }self.loaded.start = bf.start(range) / self.element.duration;
             self.loaded.end = bf.end(range) / self.element.duration;
             self.loaded.percent = self.loaded.end - self.loaded.start;
-            self.events.fire(Events.PROGRESS, self.loaded);
+            self.events.fire(Events.PROGRESS, self.loaded, true);
         }
 
-        _this22.play = function () {
-            _this22.playing = true;
-            _this22.element.play();
-            _this22.startRender(step);
+        _this20.play = function () {
+            _this20.playing = true;
+            _this20.element.play();
+            _this20.startRender(step);
         };
 
-        _this22.pause = function () {
-            _this22.playing = false;
-            _this22.element.pause();
-            _this22.stopRender(step);
+        _this20.pause = function () {
+            _this20.playing = false;
+            _this20.element.pause();
+            _this20.stopRender(step);
         };
 
-        _this22.stop = function () {
-            _this22.playing = false;
-            _this22.element.pause();
-            _this22.stopRender(step);
-            if (_this22.ready()) _this22.element.currentTime = 0;
+        _this20.stop = function () {
+            _this20.playing = false;
+            _this20.element.pause();
+            _this20.stopRender(step);
+            if (_this20.ready()) _this20.element.currentTime = 0;
         };
 
-        _this22.volume = function (v) {
-            _this22.element.volume = v;
-            if (_this22.muted) {
-                _this22.muted = false;
-                _this22.object.attr('muted', '');
+        _this20.volume = function (v) {
+            _this20.element.volume = v;
+            if (_this20.muted) {
+                _this20.muted = false;
+                _this20.object.attr('muted', '');
             }
         };
 
-        _this22.mute = function () {
-            _this22.volume(0);
-            _this22.muted = true;
-            _this22.object.attr('muted', true);
+        _this20.mute = function () {
+            _this20.volume(0);
+            _this20.muted = true;
+            _this20.object.attr('muted', true);
         };
 
-        _this22.seek = function (t) {
-            if (_this22.element.readyState <= 1) {
-                _this22.delayedCall(function () {
-                    if (_this22.seek) _this22.seek(t);
+        _this20.seek = function (t) {
+            if (_this20.element.readyState <= 1) {
+                _this20.delayedCall(function () {
+                    if (_this20.seek) _this20.seek(t);
                 }, 32);
                 return;
             }
-            _this22.element.currentTime = t;
+            _this20.element.currentTime = t;
         };
 
-        _this22.canPlayTo = function (t) {
+        _this20.canPlayTo = function (t) {
             seekTo = null;
             if (t) seekTo = t;
-            if (!_this22.buffered) _this22.startRender(checkReady);
-            return _this22.buffered;
+            if (!_this20.buffered) _this20.startRender(checkReady);
+            return _this20.buffered;
         };
 
-        _this22.ready = function () {
-            return _this22.element.readyState > _this22.element.HAVE_CURRENT_DATA;
+        _this20.ready = function () {
+            return _this20.element.readyState > _this20.element.HAVE_CURRENT_DATA;
         };
 
-        _this22.size = function (w, h) {
-            _this22.element.width = _this22.width = w;
-            _this22.element.height = _this22.height = h;
-            _this22.object.size(_this22.width, _this22.height);
+        _this20.size = function (w, h) {
+            _this20.element.width = _this20.width = w;
+            _this20.element.height = _this20.height = h;
+            _this20.object.size(_this20.width, _this20.height);
         };
 
-        _this22.forceRender = function () {
+        _this20.forceRender = function () {
             forceRender = true;
-            _this22.startRender(step);
+            _this20.startRender(step);
         };
 
-        _this22.trackProgress = function () {
-            _this22.element.addEventListener('progress', handleProgress, true);
+        _this20.trackProgress = function () {
+            _this20.element.addEventListener('progress', handleProgress, true);
         };
 
-        _this22.destroy = function () {
-            _this22.stop();
-            _this22.element.src = '';
-            _this22.object.destroy();
-            return _get(Video.prototype.__proto__ || Object.getPrototypeOf(Video.prototype), 'destroy', _this22).call(_this22);
+        _this20.destroy = function () {
+            _this20.stop();
+            _this20.element.src = '';
+            _this20.object.destroy();
+            return _get(Video.prototype.__proto__ || Object.getPrototypeOf(Video.prototype), 'destroy', _this20).call(_this20);
         };
-        return _this22;
+        return _this20;
     }
 
     _createClass(Video, [{
@@ -4063,7 +4167,7 @@ var Video = function (_Component4) {
  */
 
 var SVG = function SVG(name, type, params) {
-    var _this23 = this;
+    var _this21 = this;
 
     _classCallCheck(this, SVG);
 
@@ -4142,8 +4246,8 @@ var SVG = function SVG(name, type, params) {
     };
 
     this.destroy = function () {
-        _this23.object.destroy();
-        return Utils.nullObject(_this23);
+        _this21.object.destroy();
+        return Utils.nullObject(_this21);
     };
 };
 
@@ -4159,25 +4263,25 @@ var Scroll = function (_Component5) {
     function Scroll(object, params) {
         _classCallCheck(this, Scroll);
 
-        var _this24 = _possibleConstructorReturn(this, (Scroll.__proto__ || Object.getPrototypeOf(Scroll)).call(this));
+        var _this22 = _possibleConstructorReturn(this, (Scroll.__proto__ || Object.getPrototypeOf(Scroll)).call(this));
 
         if (!object || !object.element) {
             params = object;
             object = null;
         }
         if (!params) params = {};
-        var self = _this24;
-        _this24.x = 0;
-        _this24.y = 0;
-        _this24.max = {
+        var self = _this22;
+        _this22.x = 0;
+        _this22.y = 0;
+        _this22.max = {
             x: 0,
             y: 0
         };
-        _this24.delta = {
+        _this22.delta = {
             x: 0,
             y: 0
         };
-        _this24.enabled = true;
+        _this22.enabled = true;
         var scrollTarget = {
             x: 0,
             y: 0
@@ -4186,7 +4290,7 @@ var Scroll = function (_Component5) {
 
         initParameters();
         addListeners();
-        _this24.startRender(loop);
+        _this22.startRender(loop);
 
         function initParameters() {
             self.object = object;
@@ -4203,10 +4307,10 @@ var Scroll = function (_Component5) {
                 return e.preventDefault();
             });
             var input = self.hitObject ? new Interaction(self.hitObject) : Mouse.input;
-            input.events.add(Interaction.START, down);
-            input.events.add(Interaction.DRAG, drag);
-            input.events.add(Interaction.END, up);
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(input, Interaction.START, down);
+            self.events.add(input, Interaction.DRAG, drag);
+            self.events.add(input, Interaction.END, up);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -4279,11 +4383,11 @@ var Scroll = function (_Component5) {
             });
         }
 
-        _this24.destroy = function () {
+        _this22.destroy = function () {
             Stage.unbind('wheel', scroll);
-            return _get(Scroll.prototype.__proto__ || Object.getPrototypeOf(Scroll.prototype), 'destroy', _this24).call(_this24);
+            return _get(Scroll.prototype.__proto__ || Object.getPrototypeOf(Scroll.prototype), 'destroy', _this22).call(_this22);
         };
-        return _this24;
+        return _this22;
     }
 
     return Scroll;
@@ -4303,29 +4407,29 @@ var Slide = function (_Component6) {
 
         _classCallCheck(this, Slide);
 
-        var _this25 = _possibleConstructorReturn(this, (Slide.__proto__ || Object.getPrototypeOf(Slide)).call(this));
+        var _this23 = _possibleConstructorReturn(this, (Slide.__proto__ || Object.getPrototypeOf(Slide)).call(this));
 
-        var self = _this25;
-        _this25.x = 0;
-        _this25.y = 0;
-        _this25.max = {
+        var self = _this23;
+        _this23.x = 0;
+        _this23.y = 0;
+        _this23.max = {
             x: 0,
             y: 0
         };
-        _this25.delta = {
+        _this23.delta = {
             x: 0,
             y: 0
         };
-        _this25.direction = {
+        _this23.direction = {
             x: 0,
             y: 0
         };
-        _this25.position = 0;
-        _this25.progress = 0;
-        _this25.floor = 0;
-        _this25.ceil = 0;
-        _this25.index = 0;
-        _this25.enabled = true;
+        _this23.position = 0;
+        _this23.progress = 0;
+        _this23.floor = 0;
+        _this23.ceil = 0;
+        _this23.index = 0;
+        _this23.enabled = true;
         var scrollTarget = {
             x: 0,
             y: 0
@@ -4341,7 +4445,7 @@ var Slide = function (_Component6) {
 
         initParameters();
         addListeners();
-        _this25.startRender(loop);
+        _this23.startRender(loop);
 
         function initParameters() {
             self.num = params.num || 0;
@@ -4356,10 +4460,10 @@ var Slide = function (_Component6) {
 
         function addListeners() {
             Stage.bind('wheel', scroll);
-            Mouse.input.events.add(Interaction.START, down);
-            Mouse.input.events.add(Interaction.DRAG, drag);
-            Stage.events.add(Events.KEYBOARD_DOWN, keyPress);
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Mouse.input, Interaction.START, down);
+            self.events.add(Mouse.input, Interaction.DRAG, drag);
+            self.events.add(Events.KEYBOARD_DOWN, keyPress);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -4435,34 +4539,34 @@ var Slide = function (_Component6) {
                 self.direction.y = self.delta.y < 0 ? -1 : 1;
                 event.index = self.index;
                 event.direction = self.direction;
-                self.events.fire(Events.UPDATE, event);
+                self.events.fire(Events.UPDATE, event, true);
             }
         }
 
-        _this25.goto = function (i) {
+        _this23.goto = function (i) {
             var obj = {};
-            obj.x = i * _this25.max.x;
-            obj.y = i * _this25.max.y;
+            obj.x = i * _this23.max.x;
+            obj.y = i * _this23.max.y;
             TweenManager.tween(scrollTarget, obj, 2500, 'easeOutQuint');
         };
 
-        _this25.next = function () {
-            var progress = (_this25.x + _this25.y) / (_this25.max.x + _this25.max.y),
+        _this23.next = function () {
+            var progress = (_this23.x + _this23.y) / (_this23.max.x + _this23.max.y),
                 i = Math.round(progress);
-            _this25.goto(i + 1);
+            _this23.goto(i + 1);
         };
 
-        _this25.prev = function () {
-            var progress = (_this25.x + _this25.y) / (_this25.max.x + _this25.max.y),
+        _this23.prev = function () {
+            var progress = (_this23.x + _this23.y) / (_this23.max.x + _this23.max.y),
                 i = Math.round(progress);
-            _this25.goto(i - 1);
+            _this23.goto(i - 1);
         };
 
-        _this25.destroy = function () {
+        _this23.destroy = function () {
             Stage.unbind('wheel', scroll);
-            return _get(Slide.prototype.__proto__ || Object.getPrototypeOf(Slide.prototype), 'destroy', _this25).call(_this25);
+            return _get(Slide.prototype.__proto__ || Object.getPrototypeOf(Slide.prototype), 'destroy', _this23).call(_this23);
         };
-        return _this25;
+        return _this23;
     }
 
     return Slide;
@@ -4480,28 +4584,28 @@ var SlideVideo = function (_Component7) {
     function SlideVideo(params, callback) {
         _classCallCheck(this, SlideVideo);
 
-        var _this26 = _possibleConstructorReturn(this, (SlideVideo.__proto__ || Object.getPrototypeOf(SlideVideo)).call(this));
+        var _this24 = _possibleConstructorReturn(this, (SlideVideo.__proto__ || Object.getPrototypeOf(SlideVideo)).call(this));
 
         if (!SlideVideo.initialized) {
             SlideVideo.test = SlideVideo.test || !Device.mobile && Device.browser !== 'safari' && !Device.detect('trident');
 
             SlideVideo.initialized = true;
         }
-        var self = _this26;
-        _this26.events = new Events();
-        _this26.img = params.img;
-        if (_this26.img) _this26.img = Assets.CDN + _this26.img;
-        _this26.src = params.src;
-        if (_this26.src) _this26.src = Assets.CDN + _this26.src;
+        var self = _this24;
+        _this24.events = new Events();
+        _this24.img = params.img;
+        if (_this24.img) _this24.img = Assets.CDN + _this24.img;
+        _this24.src = params.src;
+        if (_this24.src) _this24.src = Assets.CDN + _this24.src;
 
-        if (_this26.src && SlideVideo.test) {
-            window.fetch(_this26.src).then(function (response) {
+        if (_this24.src && SlideVideo.test) {
+            window.fetch(_this24.src).then(function (response) {
                 if (!response.ok) return error();
                 response.blob().then(function (data) {
-                    _this26.element = document.createElement('video');
-                    _this26.element.src = URL.createObjectURL(data);
-                    _this26.element.muted = true;
-                    _this26.element.loop = true;
+                    _this24.element = document.createElement('video');
+                    _this24.element.src = URL.createObjectURL(data);
+                    _this24.element.muted = true;
+                    _this24.element.loop = true;
                     ready();
                     if (callback) callback();
                 });
@@ -4510,16 +4614,16 @@ var SlideVideo = function (_Component7) {
                 if (callback) callback();
             });
         } else {
-            var img = Assets.createImage(_this26.img);
+            var img = Assets.createImage(_this24.img);
             img.onload = function () {
-                _this26.element = img;
+                _this24.element = img;
                 if (callback) callback();
             };
             img.onerror = error;
         }
 
         function error() {
-            self.events.fire(Events.ERROR);
+            self.events.fire(Events.ERROR, null, true);
         }
 
         function ready() {
@@ -4530,42 +4634,42 @@ var SlideVideo = function (_Component7) {
 
         function playing() {
             self.playing = true;
-            self.events.fire(Events.READY);
+            self.events.fire(Events.READY, null, true);
         }
 
         function pause() {
             self.playing = false;
         }
 
-        _this26.resume = function () {
-            _this26.play(true);
+        _this24.resume = function () {
+            _this24.play(true);
         };
 
-        _this26.play = function () {
+        _this24.play = function () {
             var resume = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
 
-            _this26.willPlay = true;
-            if (_this26.element && _this26.element.paused && !_this26.playing) {
-                if (!resume) _this26.element.currentTime = 0;
-                _this26.element.play();
+            _this24.willPlay = true;
+            if (_this24.element && _this24.element.paused && !_this24.playing) {
+                if (!resume) _this24.element.currentTime = 0;
+                _this24.element.play();
             }
         };
 
-        _this26.pause = function () {
-            _this26.willPlay = false;
-            if (_this26.element && !_this26.element.paused && _this26.playing) _this26.element.pause();
+        _this24.pause = function () {
+            _this24.willPlay = false;
+            if (_this24.element && !_this24.element.paused && _this24.playing) _this24.element.pause();
         };
 
-        _this26.ready = function () {
-            return _this26.element.readyState > _this26.element.HAVE_CURRENT_DATA;
+        _this24.ready = function () {
+            return _this24.element.readyState > _this24.element.HAVE_CURRENT_DATA;
         };
 
-        _this26.destroy = function () {
-            _this26.pause();
-            _this26.element.src = '';
-            return _get(SlideVideo.prototype.__proto__ || Object.getPrototypeOf(SlideVideo.prototype), 'destroy', _this26).call(_this26);
+        _this24.destroy = function () {
+            _this24.pause();
+            _this24.element.src = '';
+            return _get(SlideVideo.prototype.__proto__ || Object.getPrototypeOf(SlideVideo.prototype), 'destroy', _this24).call(_this24);
         };
-        return _this26;
+        return _this24;
     }
 
     return SlideVideo;
@@ -4583,30 +4687,30 @@ var SlideLoader = function (_Component8) {
     function SlideLoader(slides, callback) {
         _classCallCheck(this, SlideLoader);
 
-        var _this27 = _possibleConstructorReturn(this, (SlideLoader.__proto__ || Object.getPrototypeOf(SlideLoader)).call(this));
+        var _this25 = _possibleConstructorReturn(this, (SlideLoader.__proto__ || Object.getPrototypeOf(SlideLoader)).call(this));
 
-        var self = _this27;
-        _this27.events = new Events();
-        _this27.list = [];
-        _this27.pathList = [];
+        var self = _this25;
+        _this25.events = new Events();
+        _this25.list = [];
+        _this25.pathList = [];
         var loaded = 0;
 
         slides.forEach(function (params) {
-            _this27.list.push(_this27.initClass(SlideVideo, params, slideLoaded));
-            _this27.pathList.push(params.path);
+            _this25.list.push(_this25.initClass(SlideVideo, params, slideLoaded));
+            _this25.pathList.push(params.path);
         });
 
         function slideLoaded() {
             self.percent = ++loaded / self.list.length;
-            self.events.fire(Events.PROGRESS, { percent: self.percent });
+            self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
             if (loaded === self.list.length) complete();
         }
 
         function complete() {
-            self.events.fire(Events.COMPLETE);
+            self.events.fire(Events.COMPLETE, null, true);
             if (callback) callback();
         }
-        return _this27;
+        return _this25;
     }
 
     _createClass(SlideLoader, null, [{
@@ -4629,7 +4733,7 @@ var SlideLoader = function (_Component8) {
  */
 
 var LinkedList = function LinkedList() {
-    var _this28 = this;
+    var _this26 = this;
 
     _classCallCheck(this, LinkedList);
 
@@ -4669,13 +4773,13 @@ var LinkedList = function LinkedList() {
 
     this.push = function (object) {
         var obj = add(object);
-        if (!_this28.first) {
-            obj.next = obj.prev = _this28.last = _this28.first = obj;
+        if (!_this26.first) {
+            obj.next = obj.prev = _this26.last = _this26.first = obj;
         } else {
-            obj.next = _this28.first;
-            obj.prev = _this28.last;
-            _this28.last.next = obj;
-            _this28.last = obj;
+            obj.next = _this26.first;
+            obj.prev = _this26.last;
+            _this26.last.next = obj;
+            _this26.last = obj;
         }
     };
 
@@ -4683,16 +4787,16 @@ var LinkedList = function LinkedList() {
         var obj = find(object);
         if (!obj || !obj.next) return;
         if (nodes.length <= 1) {
-            _this28.empty();
+            _this26.empty();
         } else {
-            if (obj === _this28.first) {
-                _this28.first = obj.next;
-                _this28.last.next = _this28.first;
-                _this28.first.prev = _this28.last;
-            } else if (obj == _this28.last) {
-                _this28.last = obj.prev;
-                _this28.last.next = _this28.first;
-                _this28.first.prev = _this28.last;
+            if (obj === _this26.first) {
+                _this26.first = obj.next;
+                _this26.last.next = _this26.first;
+                _this26.first.prev = _this26.last;
+            } else if (obj == _this26.last) {
+                _this26.last = obj.prev;
+                _this26.last.next = _this26.first;
+                _this26.first.prev = _this26.last;
             } else {
                 obj.prev.next = obj.next;
                 obj.next.prev = obj.prev;
@@ -4702,24 +4806,24 @@ var LinkedList = function LinkedList() {
     };
 
     this.empty = function () {
-        _this28.first = null;
-        _this28.last = null;
-        _this28.current = null;
-        _this28.prev = null;
+        _this26.first = null;
+        _this26.last = null;
+        _this26.current = null;
+        _this26.prev = null;
     };
 
     this.start = function () {
-        _this28.current = _this28.first;
-        _this28.prev = _this28.current;
-        return _this28.current;
+        _this26.current = _this26.first;
+        _this26.prev = _this26.current;
+        return _this26.current;
     };
 
     this.next = function () {
-        if (!_this28.current) return;
-        if (nodes.length === 1 || _this28.prev.next === _this28.first) return;
-        _this28.current = _this28.current.next;
-        _this28.prev = _this28.current;
-        return _this28.current;
+        if (!_this26.current) return;
+        if (nodes.length === 1 || _this26.prev.next === _this26.first) return;
+        _this26.current = _this26.current.next;
+        _this26.prev = _this26.current;
+        return _this26.current;
     };
 
     this.destroy = destroy;
@@ -4732,7 +4836,7 @@ var LinkedList = function LinkedList() {
  */
 
 var ObjectPool = function ObjectPool(type, number) {
-    var _this29 = this;
+    var _this27 = this;
 
     _classCallCheck(this, ObjectPool);
 
@@ -4763,9 +4867,9 @@ var ObjectPool = function ObjectPool(type, number) {
     };
 
     this.destroy = function () {
-        for (var _i3 = pool.length - 1; _i3 >= 0; _i3--) {
-            if (pool[_i3].destroy) pool[_i3].destroy();
-        }return Utils.nullObject(_this29);
+        for (var _i4 = pool.length - 1; _i4 >= 0; _i4--) {
+            if (pool[_i4].destroy) pool[_i4].destroy();
+        }return Utils.nullObject(_this27);
     };
 };
 
@@ -5052,151 +5156,166 @@ var Vector3 = function () {
 
 /* global THREE */
 
-var Utils3D = new // Singleton pattern (IICE)
+var Utils3D = function () {
+    function Utils3D() {
+        _classCallCheck(this, Utils3D);
+    }
 
-function Utils3D() {
-    var _this30 = this;
+    _createClass(Utils3D, null, [{
+        key: 'decompose',
+        value: function decompose(local, world) {
+            local.matrixWorld.decompose(world.position, world.quaternion, world.scale);
+        }
+    }, {
+        key: 'createDebug',
+        value: function createDebug() {
+            var size = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 40;
+            var color = arguments[1];
 
-    _classCallCheck(this, Utils3D);
-
-    this.PATH = '';
-    var textures = {};
-    var objectLoader = void 0,
-        geomLoader = void 0,
-        bufferGeomLoader = void 0;
-
-    this.decompose = function (local, world) {
-        local.matrixWorld.decompose(world.position, world.quaternion, world.scale);
-    };
-
-    this.createDebug = function () {
-        var size = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 40;
-        var color = arguments[1];
-
-        var geom = new THREE.IcosahedronGeometry(size, 1),
-            mat = color ? new THREE.MeshBasicMaterial({ color: color }) : new THREE.MeshNormalMaterial();
-        return new THREE.Mesh(geom, mat);
-    };
-
-    this.createRT = function (width, height) {
-        var params = {
-            minFilter: THREE.LinearFilter,
-            magFilter: THREE.LinearFilter,
-            format: THREE.RGBAFormat,
-            stencilBuffer: false
-        };
-        return new THREE.WebGLRenderTarget(width, height, params);
-    };
-
-    this.getTexture = function (src) {
-        if (!textures[src]) {
-            var img = Assets.createImage(_this30.PATH + src),
-                texture = new THREE.Texture(img);
-            img.onload = function () {
-                texture.needsUpdate = true;
-                if (texture.onload) {
-                    texture.onload();
-                    texture.onload = null;
-                }
-                if (!THREE.Math.isPowerOfTwo(img.width * img.height)) texture.minFilter = THREE.LinearFilter;
+            var geom = new THREE.IcosahedronGeometry(size, 1),
+                mat = color ? new THREE.MeshBasicMaterial({ color: color }) : new THREE.MeshNormalMaterial();
+            return new THREE.Mesh(geom, mat);
+        }
+    }, {
+        key: 'createRT',
+        value: function createRT(width, height) {
+            var params = {
+                minFilter: THREE.LinearFilter,
+                magFilter: THREE.LinearFilter,
+                format: THREE.RGBAFormat,
+                stencilBuffer: false
             };
-            textures[src] = texture;
+            return new THREE.WebGLRenderTarget(width, height, params);
         }
-        return textures[src];
-    };
-
-    this.setInfinity = function (v) {
-        var inf = Number.POSITIVE_INFINITY;
-        v.set(inf, inf, inf);
-        return v;
-    };
-
-    this.freezeMatrix = function (mesh) {
-        mesh.matrixAutoUpdate = false;
-        mesh.updateMatrix();
-    };
-
-    this.getCubemap = function (src) {
-        var path = 'cube_' + (Array.isArray(src) ? src[0] : src);
-        if (!textures[path]) {
-            var images = [];
-            for (var i = 0; i < 6; i++) {
-                var img = Assets.createImage(_this30.PATH + (Array.isArray(src) ? src[i] : src));
-                images.push(img);
+    }, {
+        key: 'getTexture',
+        value: function getTexture(src) {
+            if (!this.textures) this.textures = {};
+            if (!this.textures[src]) {
+                var img = Assets.createImage(Assets.CDN + src),
+                    texture = new THREE.Texture(img);
                 img.onload = function () {
-                    return textures[path].needsUpdate = true;
+                    texture.needsUpdate = true;
+                    if (texture.onload) {
+                        texture.onload();
+                        texture.onload = null;
+                    }
+                    if (!THREE.Math.isPowerOfTwo(img.width * img.height)) texture.minFilter = THREE.LinearFilter;
                 };
+                this.textures[src] = texture;
             }
-            textures[path] = new THREE.Texture(images);
-            textures[path].minFilter = THREE.LinearFilter;
+            return this.textures[src];
         }
-        return textures[path];
-    };
-
-    this.loadObject = function (data) {
-        if (!objectLoader) objectLoader = new THREE.ObjectLoader();
-        return objectLoader.parse(data);
-    };
-
-    this.loadGeometry = function (data) {
-        if (!geomLoader) geomLoader = new THREE.JSONLoader();
-        if (!bufferGeomLoader) bufferGeomLoader = new THREE.BufferGeometryLoader();
-        if (data.type === 'BufferGeometry') return bufferGeomLoader.parse(data);else return geomLoader.parse(data.data).geometry;
-    };
-
-    this.disposeAllTextures = function () {
-        for (var key in textures) {
-            textures[key].dispose();
+    }, {
+        key: 'setInfinity',
+        value: function setInfinity(v) {
+            var inf = Number.POSITIVE_INFINITY;
+            v.set(inf, inf, inf);
+            return v;
         }
-    };
+    }, {
+        key: 'freezeMatrix',
+        value: function freezeMatrix(mesh) {
+            mesh.matrixAutoUpdate = false;
+            mesh.updateMatrix();
+        }
+    }, {
+        key: 'getCubemap',
+        value: function getCubemap(src) {
+            var _this28 = this;
 
-    this.loadBufferGeometry = function (data) {
-        var geometry = new THREE.BufferGeometry();
-        if (data.data) data = data.data;
-        geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
-        geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal || data.position.length), 3));
-        geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv || data.position.length / 3 * 2), 2));
-        return geometry;
-    };
+            var path = 'cube_' + (Array.isArray(src) ? src[0] : src);
+            if (!this.textures) this.textures = {};
+            if (!this.textures[path]) {
+                var images = [];
+                for (var i = 0; i < 6; i++) {
+                    var img = Assets.createImage(Assets.CDN + (Array.isArray(src) ? src[i] : src));
+                    images.push(img);
+                    img.onload = function () {
+                        return _this28.textures[path].needsUpdate = true;
+                    };
+                }
+                this.textures[path] = new THREE.Texture(images);
+                this.textures[path].minFilter = THREE.LinearFilter;
+            }
+            return this.textures[path];
+        }
+    }, {
+        key: 'loadObject',
+        value: function loadObject(data) {
+            if (!this.objectLoader) this.objectLoader = new THREE.ObjectLoader();
+            return this.objectLoader.parse(data);
+        }
+    }, {
+        key: 'loadGeometry',
+        value: function loadGeometry(data) {
+            if (!this.geomLoader) this.geomLoader = new THREE.JSONLoader();
+            if (!this.bufferGeomLoader) this.bufferGeomLoader = new THREE.BufferGeometryLoader();
+            if (data.type === 'BufferGeometry') return this.bufferGeomLoader.parse(data);else return this.geomLoader.parse(data.data).geometry;
+        }
+    }, {
+        key: 'disposeAllTextures',
+        value: function disposeAllTextures() {
+            for (var key in this.textures) {
+                this.textures[key].dispose();
+            }
+        }
+    }, {
+        key: 'loadBufferGeometry',
+        value: function loadBufferGeometry(data) {
+            var geometry = new THREE.BufferGeometry();
+            if (data.data) data = data.data;
+            geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
+            geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal || data.position.length), 3));
+            geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv || data.position.length / 3 * 2), 2));
+            return geometry;
+        }
+    }, {
+        key: 'loadSkinnedGeometry',
+        value: function loadSkinnedGeometry(data) {
+            var geometry = new THREE.BufferGeometry();
+            geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
+            geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal), 3));
+            geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv), 2));
+            geometry.addAttribute('skinIndex', new THREE.BufferAttribute(new Float32Array(data.skinIndices), 4));
+            geometry.addAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(data.skinWeights), 4));
+            geometry.bones = data.bones;
+            return geometry;
+        }
+    }, {
+        key: 'loadCurve',
+        value: function loadCurve(data) {
+            var points = [];
+            for (var i = 0; i < data.length; i += 3) {
+                points.push(new THREE.Vector3(data[i + 0], data[i + 1], data[i + 2]));
+            }return new THREE.CatmullRomCurve3(points);
+        }
+    }, {
+        key: 'setLightCamera',
+        value: function setLightCamera(light, size, near, far, texture) {
+            light.shadow.camera.left = -size;
+            light.shadow.camera.right = size;
+            light.shadow.camera.top = size;
+            light.shadow.camera.bottom = -size;
+            light.castShadow = true;
+            if (near) light.shadow.camera.near = near;
+            if (far) light.shadow.camera.far = far;
+            if (texture) light.shadow.mapSize.width = light.shadow.mapSize.height = texture;
+            light.shadow.camera.updateProjectionMatrix();
+        }
+    }, {
+        key: 'getRepeatTexture',
+        value: function getRepeatTexture(src) {
+            var texture = this.getTexture(src);
+            texture.onload = function () {
+                return texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+            };
+            return texture;
+        }
+    }]);
 
-    this.loadSkinnedGeometry = function (data) {
-        var geometry = new THREE.BufferGeometry();
-        geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
-        geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal), 3));
-        geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv), 2));
-        geometry.addAttribute('skinIndex', new THREE.BufferAttribute(new Float32Array(data.skinIndices), 4));
-        geometry.addAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(data.skinWeights), 4));
-        geometry.bones = data.bones;
-        return geometry;
-    };
-
-    this.loadCurve = function (data) {
-        var points = [];
-        for (var i = 0; i < data.length; i += 3) {
-            points.push(new THREE.Vector3(data[i + 0], data[i + 1], data[i + 2]));
-        }return new THREE.CatmullRomCurve3(points);
-    };
-
-    this.setLightCamera = function (light, size, near, far, texture) {
-        light.shadow.camera.left = -size;
-        light.shadow.camera.right = size;
-        light.shadow.camera.top = size;
-        light.shadow.camera.bottom = -size;
-        light.castShadow = true;
-        if (near) light.shadow.camera.near = near;
-        if (far) light.shadow.camera.far = far;
-        if (texture) light.shadow.mapSize.width = light.shadow.mapSize.height = texture;
-        light.shadow.camera.updateProjectionMatrix();
-    };
-
-    this.getRepeatTexture = function (src) {
-        var texture = _this30.getTexture(src);
-        texture.onload = function () {
-            return texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        };
-        return texture;
-    };
-}(); // Singleton pattern (IICE)
+    return Utils3D;
+}();
 
 /**
  * Raycaster.
@@ -5212,9 +5331,9 @@ var Raycaster = function (_Component9) {
     function Raycaster(camera) {
         _classCallCheck(this, Raycaster);
 
-        var _this31 = _possibleConstructorReturn(this, (Raycaster.__proto__ || Object.getPrototypeOf(Raycaster)).call(this));
+        var _this29 = _possibleConstructorReturn(this, (Raycaster.__proto__ || Object.getPrototypeOf(Raycaster)).call(this));
 
-        _this31.camera = camera;
+        _this29.camera = camera;
         var calc = new THREE.Vector2(),
             raycaster = new THREE.Raycaster();
         var debug = void 0;
@@ -5254,11 +5373,11 @@ var Raycaster = function (_Component9) {
             debug.geometry.verticesNeedUpdate = true;
         }
 
-        _this31.pointsThreshold = function (value) {
+        _this29.pointsThreshold = function (value) {
             raycaster.params.Points.threshold = value;
         };
 
-        _this31.debug = function (scene) {
+        _this29.debug = function (scene) {
             var geom = new THREE.Geometry();
             geom.vertices.push(new THREE.Vector3(-100, 0, 0));
             geom.vertices.push(new THREE.Vector3(100, 0, 0));
@@ -5267,10 +5386,10 @@ var Raycaster = function (_Component9) {
             scene.add(debug);
         };
 
-        _this31.checkHit = function (objects) {
+        _this29.checkHit = function (objects) {
             var mouse = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : Mouse;
 
-            var rect = _this31.rect || Stage;
+            var rect = _this29.rect || Stage;
             if (mouse === Mouse && rect === Stage) {
                 calc.copy(Mouse.tilt);
             } else {
@@ -5281,11 +5400,11 @@ var Raycaster = function (_Component9) {
             return intersect(objects);
         };
 
-        _this31.checkFromValues = function (objects, origin, direction) {
+        _this29.checkFromValues = function (objects, origin, direction) {
             raycaster.set(origin, direction, 0, Number.POSITIVE_INFINITY);
             return intersect(objects);
         };
-        return _this31;
+        return _this29;
     }
 
     return Raycaster;
@@ -5299,7 +5418,7 @@ var Raycaster = function (_Component9) {
 
 var Interaction3D = function () {
     function Interaction3D(camera) {
-        var _this32 = this;
+        var _this30 = this;
 
         _classCallCheck(this, Interaction3D);
 
@@ -5372,7 +5491,7 @@ var Interaction3D = function () {
         function triggerHover(action, mesh) {
             event.action = action;
             event.mesh = mesh;
-            self.events.fire(Interaction3D.HOVER, event);
+            self.events.fire(Interaction3D.HOVER, event, true);
             var i = self.meshes.indexOf(hoverTarget);
             if (self.meshCallbacks[i].hoverCallback) self.meshCallbacks[i].hoverCallback(event);
         }
@@ -5380,7 +5499,7 @@ var Interaction3D = function () {
         function triggerClick(mesh) {
             event.action = 'click';
             event.mesh = mesh;
-            self.events.fire(Interaction3D.CLICK, event);
+            self.events.fire(Interaction3D.CLICK, event, true);
             var i = self.meshes.indexOf(clickTarget);
             if (self.meshCallbacks[i].clickCallback) self.meshCallbacks[i].clickCallback(event);
         }
@@ -5401,8 +5520,8 @@ var Interaction3D = function () {
         this.add = function (meshes, hoverCallback, clickCallback, parse) {
             if (!Array.isArray(meshes) || parse) meshes = parseMeshes(meshes);
             meshes.forEach(function (mesh) {
-                _this32.meshes.push(mesh);
-                _this32.meshCallbacks.push({ hoverCallback: hoverCallback, clickCallback: clickCallback });
+                _this30.meshes.push(mesh);
+                _this30.meshCallbacks.push({ hoverCallback: hoverCallback, clickCallback: clickCallback });
             });
         };
 
@@ -5412,19 +5531,19 @@ var Interaction3D = function () {
                 if (mesh === hoverTarget) {
                     triggerHover('out', hoverTarget);
                     hoverTarget = null;
-                    Stage.css('cursor', _this32.cursor);
+                    Stage.css('cursor', _this30.cursor);
                 }
-                for (var i = _this32.meshes.length - 1; i >= 0; i--) {
-                    if (_this32.meshes[i] === mesh) {
-                        _this32.meshes.splice(i, 1);
-                        _this32.meshCallbacks.splice(i, 1);
+                for (var i = _this30.meshes.length - 1; i >= 0; i--) {
+                    if (_this30.meshes[i] === mesh) {
+                        _this30.meshes.splice(i, 1);
+                        _this30.meshCallbacks.splice(i, 1);
                     }
                 }
             });
         };
 
         this.destroy = function () {
-            return Utils.nullObject(_this32);
+            return Utils.nullObject(_this30);
         };
     }
 
@@ -5452,18 +5571,18 @@ var ScreenProjection = function (_Component10) {
     function ScreenProjection(camera) {
         _classCallCheck(this, ScreenProjection);
 
-        var _this33 = _possibleConstructorReturn(this, (ScreenProjection.__proto__ || Object.getPrototypeOf(ScreenProjection)).call(this));
+        var _this31 = _possibleConstructorReturn(this, (ScreenProjection.__proto__ || Object.getPrototypeOf(ScreenProjection)).call(this));
 
         var v3 = new THREE.Vector3(),
             v32 = new THREE.Vector3(),
             value = new THREE.Vector3();
 
-        _this33.set = function (v) {
+        _this31.set = function (v) {
             camera = v;
         };
 
-        _this33.unproject = function (mouse, distance) {
-            var rect = _this33.rect || Stage;
+        _this31.unproject = function (mouse, distance) {
+            var rect = _this31.rect || Stage;
             v3.set(mouse.x / rect.width * 2 - 1, -(mouse.y / rect.height) * 2 + 1, 0.5);
             v3.unproject(camera);
             var pos = camera.position;
@@ -5473,8 +5592,8 @@ var ScreenProjection = function (_Component10) {
             return value;
         };
 
-        _this33.project = function (pos) {
-            var rect = _this33.rect || Stage;
+        _this31.project = function (pos) {
+            var rect = _this31.rect || Stage;
             if (pos instanceof THREE.Object3D) {
                 pos.updateMatrixWorld();
                 v32.set(0, 0, 0).setFromMatrixPosition(pos.matrixWorld);
@@ -5486,7 +5605,7 @@ var ScreenProjection = function (_Component10) {
             v32.y = -(v32.y - 1) / 2 * rect.height;
             return v32;
         };
-        return _this33;
+        return _this31;
     }
 
     return ScreenProjection;
@@ -5506,11 +5625,11 @@ var Shader = function (_Component11) {
     function Shader(vertexShader, fragmentShader, props) {
         _classCallCheck(this, Shader);
 
-        var _this34 = _possibleConstructorReturn(this, (Shader.__proto__ || Object.getPrototypeOf(Shader)).call(this));
+        var _this32 = _possibleConstructorReturn(this, (Shader.__proto__ || Object.getPrototypeOf(Shader)).call(this));
 
-        var self = _this34;
-        _this34.uniforms = {};
-        _this34.properties = {};
+        var self = _this32;
+        _this32.uniforms = {};
+        _this32.properties = {};
 
         initProperties();
         initShaders();
@@ -5546,7 +5665,7 @@ var Shader = function (_Component11) {
             };
             return code.replace(/#s?chunk\(\s?(\w+)\s?\);/g, threeChunk);
         }
-        return _this34;
+        return _this32;
     }
 
     _createClass(Shader, [{
@@ -5607,15 +5726,15 @@ var Effects = function (_Component12) {
     function Effects(stage, params) {
         _classCallCheck(this, Effects);
 
-        var _this35 = _possibleConstructorReturn(this, (Effects.__proto__ || Object.getPrototypeOf(Effects)).call(this));
+        var _this33 = _possibleConstructorReturn(this, (Effects.__proto__ || Object.getPrototypeOf(Effects)).call(this));
 
-        var self = _this35;
-        _this35.stage = stage;
-        _this35.renderer = params.renderer;
-        _this35.scene = params.scene;
-        _this35.camera = params.camera;
-        _this35.shader = params.shader;
-        _this35.dpr = params.dpr || 1;
+        var self = _this33;
+        _this33.stage = stage;
+        _this33.renderer = params.renderer;
+        _this33.scene = params.scene;
+        _this33.camera = params.camera;
+        _this33.shader = params.shader;
+        _this33.dpr = params.dpr || 1;
         var renderTarget = void 0,
             camera = void 0,
             scene = void 0,
@@ -5635,7 +5754,7 @@ var Effects = function (_Component12) {
         }
 
         function addListeners() {
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Events.RESIZE, resize);
         }
 
         function resize() {
@@ -5648,12 +5767,12 @@ var Effects = function (_Component12) {
             camera.updateProjectionMatrix();
         }
 
-        _this35.render = function () {
-            _this35.renderer.render(_this35.scene, _this35.camera, renderTarget, true);
+        _this33.render = function () {
+            _this33.renderer.render(_this33.scene, _this33.camera, renderTarget, true);
             mesh.material.uniforms.texture.value = renderTarget.texture;
-            _this35.renderer.render(scene, camera);
+            _this33.renderer.render(scene, camera);
         };
-        return _this35;
+        return _this33;
     }
 
     return Effects;

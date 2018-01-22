@@ -34,11 +34,11 @@ Math.radians = function (degrees) {
     return degrees * (Math.PI / 180);
 };
 
-Math.clamp = function (value, min = 0, max = 1) {
+Math.clamp = function (value, min, max) {
     return Math.min(Math.max(value, Math.min(min, max)), Math.max(min, max));
 };
 
-Math.range = function (value, oldMin = -1, oldMax = 1, newMin = 0, newMax = 1, isClamp) {
+Math.range = function (value, oldMin, oldMax, newMin, newMax, isClamp) {
     const newValue = (value - oldMin) * (newMax - newMin) / (oldMax - oldMin) + newMin;
     if (isClamp) return Math.clamp(newValue, newMin, newMax);
     return newValue;
@@ -194,11 +194,9 @@ if (!window.Global) window.Global = {};
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Utils = new ( // Singleton pattern (IICE)
-
 class Utils {
 
-    random(min, max, precision = 0) {
+    static random(min, max, precision = 0) {
         if (typeof min === 'undefined') return Math.random();
         if (min === max) return min;
         min = min || 0;
@@ -207,70 +205,68 @@ class Utils {
         return Math.round((min + Math.random() * (max - min)) * p) / p;
     }
 
-    headsTails(heads, tails) {
+    static headsTails(heads, tails) {
         return this.random(0, 1) ? tails : heads;
     }
 
-    queryString(key) {
+    static queryString(key) {
         const str = decodeURI(window.location.search.replace(new RegExp('^(?:.*[&\\?]' + encodeURI(key).replace(/[.+*]/g, '\\$&') + '(?:\\=([^&]*))?)?.*$', 'i'), '$1'));
         if (!str.length || str === '0' || str === 'false') return false;
         return str;
     }
 
-    getConstructorName(object) {
+    static getConstructorName(object) {
         return object.constructor.name || object.constructor.toString().match(/function ([^(]+)/)[1];
     }
 
-    nullObject(object) {
+    static nullObject(object) {
         for (let key in object) if (typeof object[key] !== 'undefined') object[key] = null;
         return null;
     }
 
-    cloneObject(object) {
+    static cloneObject(object) {
         return JSON.parse(JSON.stringify(object));
     }
 
-    mergeObject(...objects) {
+    static mergeObject(...objects) {
         const object = {};
         for (let obj of objects) for (let key in obj) object[key] = obj[key];
         return object;
     }
 
-    toArray(object) {
+    static toArray(object) {
         return Object.keys(object).map(key => {
             return object[key];
         });
     }
 
-    cloneArray(array) {
+    static cloneArray(array) {
         return array.slice(0);
     }
 
-    basename(path, ext) {
+    static basename(path, ext) {
         const name = path.split('/').last();
         return !ext ? name.split('.')[0] : name;
     }
 
-    extension(path) {
+    static extension(path) {
         return path.split('.').last().split('?')[0].toLowerCase();
     }
 
-    base64(str) {
+    static base64(str) {
         return window.btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
             return String.fromCharCode('0x' + p1);
         }));
     }
 
-    timestamp() {
+    static timestamp() {
         return (Date.now() + this.random(0, 99999)).toString();
     }
 
-    pad(number) {
+    static pad(number) {
         return number < 10 ? '0' + number : number;
     }
 }
-
-)(); // Singleton pattern (IICE)
 
 /**
  * Render loop.
@@ -283,17 +279,15 @@ if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitR
     return callback => setTimeout(() => callback(Date.now() - start), 1000 / 60);
 })();
 
-const Render = new ( // Singleton pattern (IICE)
-
 class Render {
 
-    constructor() {
+    static init() {
         let self = this;
         const render = [],
             skipLimit = 200;
         let last = performance.now();
 
-        requestAnimationFrame(step);
+        window.addEventListener('load', () => requestAnimationFrame(step), true);
 
         function step(t) {
             const delta = Math.min(skipLimit, t - last);
@@ -342,7 +336,7 @@ class Render {
     }
 }
 
-)(); // Singleton pattern (IICE)
+Render.init();
 
 /**
  * Timer helper class.
@@ -350,11 +344,9 @@ class Render {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Timer = new ( // Singleton pattern (IICE)
-
 class Timer {
 
-    constructor() {
+    static init() {
         const callbacks = [],
             discard = [];
 
@@ -407,7 +399,7 @@ class Timer {
     }
 }
 
-)(); // Singleton pattern (IICE)
+Timer.init();
 
 /**
  * Event helper class.
@@ -418,49 +410,112 @@ class Timer {
 class Events {
 
     constructor() {
-        const events = {};
 
-        this.add = (event, callback) => {
-            if (!events[event]) events[event] = [];
-            events[event].push(callback);
+        class Emitter {
+
+            constructor() {
+                this.events = [];
+                this.links = [];
+            }
+
+            add(event, callback, object) {
+                this.events.push({ event, callback, object });
+            }
+
+            remove(event, callback) {
+                for (let i = this.events.length - 1; i >= 0; i--) {
+                    if (this.events[i].event === event && this.events[i].callback === callback) {
+                        this.events[i].removed = true;
+                        this.events.splice(i, 1)[0] = null;
+                    }
+                }
+            }
+
+            fire(event, object = {}) {
+                let called = false;
+                for (let i = 0; i < this.events.length; i++) {
+                    if (this.events[i].event === event && !this.events[i].removed) {
+                        this.events[i].callback(object);
+                        called = true;
+                    }
+                }
+                return called;
+            }
+
+            destroy(object) {
+                for (let i = this.events.length - 1; i >= 0; i--) if (this.events[i].object === object) this.events.splice(i, 1)[0] = null;
+            }
+
+            link(object) {
+                if (!~this.links.indexOf(object)) this.links.push(object);
+            }
+        }
+
+        if (!Events.initialized) {
+            Events.emitter        = new Emitter();
+            Events.VISIBILITY     = 'visibility';
+            Events.KEYBOARD_PRESS = 'keyboard_press';
+            Events.KEYBOARD_DOWN  = 'keyboard_down';
+            Events.KEYBOARD_UP    = 'keyboard_up';
+            Events.RESIZE         = 'resize';
+            Events.COMPLETE       = 'complete';
+            Events.PROGRESS       = 'progress';
+            Events.UPDATE         = 'update';
+            Events.LOADED         = 'loaded';
+            Events.ERROR          = 'error';
+            Events.READY          = 'ready';
+            Events.HOVER          = 'hover';
+            Events.CLICK          = 'click';
+
+            Events.initialized = true;
+        }
+        this.emitter = new Emitter();
+        const linked = [];
+
+        this.add = (object, event, callback) => {
+            if (typeof object !== 'object') {
+                callback = event;
+                event = object;
+                object = null;
+            }
+            if (!object) {
+                Events.emitter.add(event, callback, this);
+            } else {
+                const emitter = object.events.emitter;
+                emitter.add(event, callback, this);
+                emitter.link(this);
+                linked.push(emitter);
+            }
         };
 
-        this.remove = (event, callback) => {
-            if (!events[event]) return;
-            events[event].remove(callback);
+        this.remove = (object, event, callback) => {
+            if (typeof object !== 'object') {
+                callback = event;
+                event = object;
+                object = null;
+            }
+            if (!object) Events.emitter.remove(event, callback);
+            else object.events.emitter.remove(event, callback);
+        };
+
+        this.fire = (event, object = {}, local) => {
+            if (this.emitter.fire(event, object)) return;
+            if (local) return;
+            Events.emitter.fire(event, object);
         };
 
         this.destroy = () => {
-            for (let event in events) {
-                for (let i = events[event].length - 1; i >= 0; i--) {
-                    events[event][i] = null;
-                    events[event].splice(i, 1);
-                }
-            }
+            Events.emitter.destroy(this);
+            linked.forEach(emitter => emitter.destroy(this));
+            this.emitter.links.forEach(object => object.unlink(this.emitter));
             return Utils.nullObject(this);
         };
 
-        this.fire = (event, object = {}) => {
-            if (!events[event]) return;
-            const clone = Utils.cloneArray(events[event]);
-            clone.forEach(callback => callback(object));
+        this.unlink = emitter => {
+            linked.remove(emitter);
         };
     }
 }
-
-Events.VISIBILITY     = 'visibility';
-Events.KEYBOARD_PRESS = 'keyboard_press';
-Events.KEYBOARD_DOWN  = 'keyboard_down';
-Events.KEYBOARD_UP    = 'keyboard_up';
-Events.RESIZE         = 'resize';
-Events.COMPLETE       = 'complete';
-Events.PROGRESS       = 'progress';
-Events.UPDATE         = 'update';
-Events.LOADED         = 'loaded';
-Events.ERROR          = 'error';
-Events.READY          = 'ready';
-Events.HOVER          = 'hover';
-Events.CLICK          = 'click';
 
 /**
  * Browser detection and vendor prefixes.
@@ -468,11 +523,9 @@ Events.CLICK          = 'click';
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Device = new ( // Singleton pattern (IICE)
-
 class Device {
 
-    constructor() {
+    static init() {
         this.agent = navigator.userAgent.toLowerCase();
         this.prefix = (() => {
             const styles = window.getComputedStyle(document.documentElement, ''),
@@ -566,20 +619,20 @@ class Device {
         })();
     }
 
-    detect(matches) {
+    static detect(matches) {
         return this.agent.includes(matches);
     }
 
-    vendor(style) {
+    static vendor(style) {
         return this.prefix.js + style;
     }
 
-    vibrate(time) {
+    static vibrate(time) {
         if (navigator.vibrate) navigator.vibrate(time);
     }
 }
 
-)(); // Singleton pattern (IICE)
+Device.init();
 
 /**
  * Alien component.
@@ -665,11 +718,9 @@ class Component {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Interpolation = new ( // Singleton pattern (IICE)
-
 class Interpolation {
 
-    constructor() {
+    static init() {
         this.convertEase = ease => {
             return (() => {
                 let fn;
@@ -938,7 +989,7 @@ class Interpolation {
     }
 }
 
-)(); // Singleton pattern (IICE)
+Interpolation.init();
 
 /**
  * Mathematical.
@@ -1025,11 +1076,9 @@ class MathTween {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const TweenManager = new ( // Singleton pattern (IICE)
-
 class TweenManager {
 
-    constructor() {
+    static init() {
         const self = this;
         this.TRANSFORMS = ['x', 'y', 'z', 'scale', 'scaleX', 'scaleY', 'rotation', 'rotationX', 'rotationY', 'rotationZ', 'skewX', 'skewY', 'perspective'];
         this.CSS_EASES = {
@@ -1080,7 +1129,7 @@ class TweenManager {
         };
     }
 
-    tween(object, props, time, ease, delay, callback, update) {
+    static tween(object, props, time, ease, delay, callback, update) {
         if (typeof delay !== 'number') {
             update = callback;
             callback = delay;
@@ -1096,7 +1145,7 @@ class TweenManager {
         return promise || tween;
     }
 
-    clearTween(object) {
+    static clearTween(object) {
         if (object.mathTween) object.mathTween.stop();
         if (object.mathTweens) {
             const tweens = object.mathTweens;
@@ -1108,7 +1157,7 @@ class TweenManager {
         }
     }
 
-    parseTransform(props) {
+    static parseTransform(props) {
         let transforms = '';
         if (typeof props.x !== 'undefined' || typeof props.y !== 'undefined' || typeof props.z !== 'undefined') {
             const x = props.x || 0,
@@ -1136,11 +1185,11 @@ class TweenManager {
         return transforms;
     }
 
-    isTransform(key) {
+    static isTransform(key) {
         return ~this.TRANSFORMS.indexOf(key);
     }
 
-    getAllTransforms(object) {
+    static getAllTransforms(object) {
         const obj = {};
         for (let i = 0; i < this.TRANSFORMS.length; i++) {
             const key = this.TRANSFORMS[i],
@@ -1150,12 +1199,12 @@ class TweenManager {
         return obj;
     }
 
-    getEase(name) {
+    static getEase(name) {
         return this.CSS_EASES[name] || this.CSS_EASES.easeOutCubic;
     }
 }
 
-)(); // Singleton pattern (IICE)
+TweenManager.init();
 
 /**
  * CSS3 transition animation.
@@ -1260,13 +1309,13 @@ class Interface {
             if (typeof name === 'string') {
                 this.name = name;
                 this.type = type;
-                if (this.type === 'svg') {
+                if (type === 'svg') {
                     const qualifiedName = detached || 'svg';
                     detached = true;
                     this.element = document.createElementNS('http://www.w3.org/2000/svg', qualifiedName);
                     this.element.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:xlink', 'http://www.w3.org/1999/xlink');
                 } else {
-                    this.element = document.createElement(this.type);
+                    this.element = document.createElement(type);
                     if (name[0] !== '.') this.element.id = name;
                     else this.element.className = name.substr(1);
                 }
@@ -1792,60 +1841,46 @@ class Interface {
 }
 
 /**
- * Stage reference class.
+ * Stage instance.
  *
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Stage = new ( // Singleton pattern (IICE)
+const Stage = new Interface('Stage');
+Stage.css({ overflow: 'hidden' });
 
-class Stage extends Interface {
+window.addEventListener('load', () => {
+    let last;
 
-    constructor() {
-        super('Stage');
-        const self = this;
-        let last;
+    window.addEventListener('focus', focus, true);
+    window.addEventListener('blur', blur, true);
+    window.addEventListener('keydown', e => Events.emitter.fire(Events.KEYBOARD_DOWN, e), true);
+    window.addEventListener('keyup', e => Events.emitter.fire(Events.KEYBOARD_UP, e), true);
+    window.addEventListener('keypress', e => Events.emitter.fire(Events.KEYBOARD_PRESS, e), true);
+    window.addEventListener('resize', () => Events.emitter.fire(Events.RESIZE), true);
+    window.addEventListener('orientationchange', () => Events.emitter.fire(Events.RESIZE), true);
+    Stage.events.add(Events.RESIZE, resize);
+    resize();
 
-        initHTML();
-        addListeners();
-
-        function initHTML() {
-            self.css({ overflow: 'hidden' });
-        }
-
-        function addListeners() {
-            window.addEventListener('focus', focus, true);
-            window.addEventListener('blur', blur, true);
-            window.addEventListener('keydown', e => self.events.fire(Events.KEYBOARD_DOWN, e), true);
-            window.addEventListener('keyup', e => self.events.fire(Events.KEYBOARD_UP, e), true);
-            window.addEventListener('keypress', e => self.events.fire(Events.KEYBOARD_PRESS, e), true);
-            window.addEventListener('resize', () => self.events.fire(Events.RESIZE), true);
-            self.events.add(Events.RESIZE, resize);
-            resize();
-        }
-
-        function focus() {
-            if (last !== 'focus') {
-                last = 'focus';
-                self.events.fire(Events.VISIBILITY, { type: 'focus' });
-            }
-        }
-
-        function blur() {
-            if (last !== 'blur') {
-                last = 'blur';
-                self.events.fire(Events.VISIBILITY, { type: 'blur' });
-            }
-        }
-
-        function resize() {
-            self.size();
-            self.orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    function focus() {
+        if (last !== 'focus') {
+            last = 'focus';
+            Events.emitter.fire(Events.VISIBILITY, { type: 'focus' });
         }
     }
-}
 
-)(); // Singleton pattern (IICE)
+    function blur() {
+        if (last !== 'blur') {
+            last = 'blur';
+            Events.emitter.fire(Events.VISIBILITY, { type: 'blur' });
+        }
+    }
+
+    function resize() {
+        Stage.size();
+        Stage.orientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    }
+}, true);
 
 /**
  * 2D vector.
@@ -2079,7 +2114,7 @@ class Interaction {
             self.delta.x = self.move.x = self.velocity.x = 0;
             self.delta.y = self.move.y = self.velocity.y = 0;
             distance = 0;
-            self.events.fire(Interaction.START, e);
+            self.events.fire(Interaction.START, e, true);
             timeDown = timeMove = Render.TIME;
         }
 
@@ -2099,8 +2134,8 @@ class Interaction {
             timeMove = Render.TIME;
             self.velocity.x = Math.abs(self.delta.x) / delta;
             self.velocity.y = Math.abs(self.delta.y) / delta;
-            self.events.fire(Interaction.MOVE, e);
-            if (self.isTouching) self.events.fire(Interaction.DRAG, e);
+            self.events.fire(Interaction.MOVE, e, true);
+            if (self.isTouching) self.events.fire(Interaction.DRAG, e, true);
         }
 
         function up(e) {
@@ -2113,8 +2148,8 @@ class Interaction {
                 self.delta.x = 0;
                 self.delta.y = 0;
             }
-            self.events.fire(Interaction.END, e);
-            if (distance < 20 && Render.TIME - timeDown < 2000) self.events.fire(Interaction.CLICK, e);
+            self.events.fire(Interaction.END, e, true);
+            if (distance < 20 && Render.TIME - timeDown < 2000) self.events.fire(Interaction.CLICK, e, true);
         }
 
         this.destroy = () => {
@@ -2134,11 +2169,9 @@ class Interaction {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Accelerometer = new ( // Singleton pattern (IICE)
-
 class Accelerometer {
 
-    constructor() {
+    static init() {
         const self = this;
         this.x = 0;
         this.y = 0;
@@ -2152,6 +2185,9 @@ class Accelerometer {
         this.rotationRate.beta = 0;
         this.rotationRate.gamma = 0;
         this.toRadians = Device.os === 'ios' ? Math.PI / 180 : 1;
+
+        window.addEventListener('devicemotion', updateAccel, true);
+        window.addEventListener('deviceorientation', updateOrientation, true);
 
         function updateAccel(e) {
             switch (window.orientation) {
@@ -2245,15 +2281,8 @@ class Accelerometer {
             else if (Vx < 0) compassHeading += 2 * Math.PI;
             return compassHeading * (180 / Math.PI);
         }
-
-        this.init = () => {
-            window.addEventListener('devicemotion', updateAccel, true);
-            window.addEventListener('deviceorientation', updateOrientation, true);
-        };
     }
 }
-
-)(); // Singleton pattern (IICE)
 
 /**
  * Mouse interaction.
@@ -2261,11 +2290,9 @@ class Accelerometer {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Mouse = new ( // Singleton pattern (IICE)
-
 class Mouse {
 
-    constructor() {
+    static init() {
         const self = this;
         this.x = 0;
         this.y = 0;
@@ -2282,6 +2309,14 @@ class Mouse {
             y: 0
         };
 
+        this.input = new Interaction();
+        Stage.events.add(this.input, Interaction.START, update);
+        Stage.events.add(this.input, Interaction.MOVE, update);
+        update({
+            x: Stage.width / 2,
+            y: Stage.height / 2
+        });
+
         function update(e) {
             self.x = e.x;
             self.y = e.y;
@@ -2292,20 +2327,8 @@ class Mouse {
             self.inverseNormal.x = self.normal.x;
             self.inverseNormal.y = 1 - self.normal.y;
         }
-
-        this.init = () => {
-            this.input = new Interaction();
-            this.input.events.add(Interaction.START, update);
-            this.input.events.add(Interaction.MOVE, update);
-            update({
-                x: Stage.width / 2,
-                y: Stage.height / 2
-            });
-        };
     }
 }
-
-)(); // Singleton pattern (IICE)
 
 /**
  * Image helper class with promise method.
@@ -2313,11 +2336,9 @@ class Mouse {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Assets = new ( // Singleton pattern (IICE)
-
 class Assets {
 
-    constructor() {
+    static init() {
         this.CDN = '';
         this.CORS = null;
         const images = {};
@@ -2341,7 +2362,7 @@ class Assets {
         };
     }
 
-    loadImage(img) {
+    static loadImage(img) {
         if (typeof img === 'string') img = this.createImage(img);
         const promise = Promise.create();
         img.onload = promise.resolve;
@@ -2350,7 +2371,7 @@ class Assets {
     }
 }
 
-)(); // Singleton pattern (IICE)
+Assets.init();
 
 /**
  * Asset loader with promise method.
@@ -2401,12 +2422,12 @@ class AssetLoader extends Component {
 
         function assetLoaded() {
             self.percent = ++loaded / total;
-            self.events.fire(Events.PROGRESS, { percent: self.percent });
+            self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
             if (loaded === total) complete();
         }
 
         function complete() {
-            self.events.fire(Events.COMPLETE);
+            self.events.fire(Events.COMPLETE, null, true);
             if (callback) callback();
         }
     }
@@ -2438,22 +2459,22 @@ class MultiLoader extends Component {
             let percent = 0;
             for (let i = 0; i < loaders.length; i++) percent += loaders[i].percent || 0;
             percent /= loaders.length;
-            self.events.fire(Events.PROGRESS, { percent });
+            self.events.fire(Events.PROGRESS, { percent }, true);
         }
 
         function complete() {
-            if (++loaded === loaders.length) self.events.fire(Events.COMPLETE);
+            if (++loaded === loaders.length) self.events.fire(Events.COMPLETE, null, true);
         }
 
         this.push = loader => {
             loaders.push(loader);
-            loader.events.add(Events.PROGRESS, progress);
-            loader.events.add(Events.COMPLETE, complete);
+            this.events.add(loader, Events.PROGRESS, progress);
+            this.events.add(loader, Events.COMPLETE, complete);
         };
 
         this.complete = () => {
-            this.events.fire(Events.PROGRESS, { percent: 1 });
-            this.events.fire(Events.COMPLETE);
+            this.events.fire(Events.PROGRESS, { percent: 1 }, true);
+            this.events.fire(Events.COMPLETE, null, true);
         };
     }
 }
@@ -2485,8 +2506,8 @@ class FontLoader extends Component {
             const ready = () => {
                 element.destroy();
                 self.percent = 1;
-                self.events.fire(Events.PROGRESS, { percent: self.percent });
-                self.events.fire(Events.COMPLETE);
+                self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
+                self.events.fire(Events.COMPLETE, null, true);
                 if (callback) callback();
             };
             if (document.fonts && document.fonts.ready) document.fonts.ready.then(ready);
@@ -2535,7 +2556,7 @@ class StateDispatcher {
                 if (!self.locked) {
                     storePath = path;
                     storeState = state;
-                    self.events.fire(Events.UPDATE, { value: state, path, split: path.split('/') });
+                    self.events.fire(Events.UPDATE, { value: state, path }, true);
                 } else if (storePath) {
                     if (forceHash) location.hash = '!/' + storePath;
                     else history.pushState(storeState, null, rootPath + storePath);
@@ -2545,7 +2566,7 @@ class StateDispatcher {
 
         this.getState = () => {
             const path = getPath();
-            return { value: storeState, path, split: path.split('/') };
+            return { value: storeState, path };
         };
 
         this.setState = (state, path) => {
@@ -2595,17 +2616,15 @@ class StateDispatcher {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const Storage = new ( // Singleton pattern (IICE)
-
 class Storage {
 
-    set(key, value) {
+    static set(key, value) {
         if (value !== null && typeof value === 'object') value = JSON.stringify(value);
         if (value === null) window.localStorage.removeItem(key);
         else window.localStorage[key] = value;
     }
 
-    get(key) {
+    static get(key) {
         let value = window.localStorage[key];
         if (value) {
             let char0;
@@ -2617,8 +2636,6 @@ class Storage {
     }
 }
 
-)(); // Singleton pattern (IICE)
-
 /**
  * Web audio engine.
  *
@@ -2627,30 +2644,26 @@ class Storage {
 
 if (!window.AudioContext) window.AudioContext = window.webkitAudioContext || window.mozAudioContext || window.oAudioContext;
 
-const WebAudio = new ( // Singleton pattern (IICE)
-
 class WebAudio {
 
-    constructor() {
+    static init() {
         const self = this;
         const sounds = {};
         let context;
 
-        this.init = () => {
-            if (window.AudioContext) context = new AudioContext();
-            if (!context) return;
-            this.globalGain = context.createGain();
-            this.globalGain.connect(context.destination);
-            this.globalGain.value = this.globalGain.gain.defaultValue;
-            this.gain = {
-                set value(value) {
-                    self.globalGain.value = value;
-                    self.globalGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
-                },
-                get value() {
-                    return self.globalGain.value;
-                }
-            };
+        if (window.AudioContext) context = new AudioContext();
+        if (!context) return;
+        this.globalGain = context.createGain();
+        this.globalGain.connect(context.destination);
+        this.globalGain.value = this.globalGain.gain.defaultValue;
+        this.gain = {
+            set value(value) {
+                self.globalGain.value = value;
+                self.globalGain.gain.setTargetAtTime(value, context.currentTime, 0.01);
+            },
+            get value() {
+                return self.globalGain.value;
+            }
         };
 
         this.loadSound = (id, callback) => {
@@ -2727,8 +2740,6 @@ class WebAudio {
         window.WebAudio = this;
     }
 }
-
-)(); // Singleton pattern (IICE)
 
 /**
  * Canvas values.
@@ -3302,11 +3313,42 @@ class Canvas {
  * @author Patrick Schroen / https://github.com/pschroen
  */
 
-const CanvasFont = new ( // Singleton pattern (IICE)
-
 class CanvasFont {
 
-    constructor() {
+    static createText(canvas, width, height, str, font, fillStyle, { textBaseline = 'alphabetic', lineHeight = height, letterSpacing = 0, textAlign = 'start' }) {
+        const context = canvas.context;
+        if (height === lineHeight) {
+            return createText(canvas, width, height, str, font, fillStyle, textBaseline, letterSpacing, textAlign);
+        } else {
+            const text = new CanvasGraphics(width, height),
+                words = str.split(' '),
+                lines = [];
+            let line = '';
+            text.totalWidth = 0;
+            text.totalHeight = 0;
+            context.font = font;
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ',
+                    characters = testLine.split('');
+                let testWidth = 0;
+                for (let i = 0; i < characters.length; i++) testWidth += context.measureText(characters[i]).width + letterSpacing;
+                if (testWidth > width && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+            lines.forEach((line, i) => {
+                const graphics = createText(canvas, width, lineHeight, line.slice(0, -1), font, fillStyle, textBaseline, letterSpacing, textAlign);
+                graphics.y = i * lineHeight;
+                text.add(graphics);
+                text.totalWidth = Math.max(graphics.totalWidth, text.totalWidth);
+                text.totalHeight += lineHeight;
+            });
+            return text;
+        }
 
         function createText(canvas, width, height, str, font, fillStyle, textBaseline, letterSpacing, textAlign) {
             const context = canvas.context,
@@ -3342,46 +3384,8 @@ class CanvasFont {
             } while (index < str.length);
             return graphics;
         }
-
-        this.createText = (canvas, width, height, str, font, fillStyle, { textBaseline = 'alphabetic', lineHeight = height, letterSpacing = 0, textAlign = 'start' }) => {
-            const context = canvas.context;
-            if (height === lineHeight) {
-                return createText(canvas, width, height, str, font, fillStyle, textBaseline, letterSpacing, textAlign);
-            } else {
-                const text = new CanvasGraphics(width, height),
-                    words = str.split(' '),
-                    lines = [];
-                let line = '';
-                text.totalWidth = 0;
-                text.totalHeight = 0;
-                context.font = font;
-                for (let n = 0; n < words.length; n++) {
-                    const testLine = line + words[n] + ' ',
-                        characters = testLine.split('');
-                    let testWidth = 0;
-                    for (let i = 0; i < characters.length; i++) testWidth += context.measureText(characters[i]).width + letterSpacing;
-                    if (testWidth > width && n > 0) {
-                        lines.push(line);
-                        line = words[n] + ' ';
-                    } else {
-                        line = testLine;
-                    }
-                }
-                lines.push(line);
-                lines.forEach((line, i) => {
-                    const graphics = createText(canvas, width, lineHeight, line.slice(0, -1), font, fillStyle, textBaseline, letterSpacing, textAlign);
-                    graphics.y = i * lineHeight;
-                    text.add(graphics);
-                    text.totalWidth = Math.max(graphics.totalWidth, text.totalWidth);
-                    text.totalHeight += lineHeight;
-                });
-                return text;
-            }
-        };
     }
 }
-
-)(); // Singleton pattern (IICE)
 
 /**
  * Video interface.
@@ -3439,12 +3443,12 @@ class Video extends Component {
                 tick++;
                 if (tick > 30 && !buffering) {
                     buffering = true;
-                    self.events.fire(Events.ERROR);
+                    self.events.fire(Events.ERROR, null, true);
                 }
             } else {
                 tick = 0;
                 if (buffering) {
-                    self.events.fire(Events.READY);
+                    self.events.fire(Events.READY, null, true);
                     buffering = false;
                 }
             }
@@ -3452,13 +3456,13 @@ class Video extends Component {
             if (self.element.currentTime >= (self.duration || self.element.duration) - 0.001) {
                 if (!self.loop) {
                     if (!forceRender) self.stopRender(step);
-                    self.events.fire(Events.COMPLETE);
+                    self.events.fire(Events.COMPLETE, null, true);
                 }
             }
             event.time = self.element.currentTime;
             event.duration = self.element.duration;
             event.loaded = self.loaded;
-            self.events.fire(Events.UPDATE, event);
+            self.events.fire(Events.UPDATE, event, true);
         }
 
         function checkReady() {
@@ -3477,7 +3481,7 @@ class Video extends Component {
             }
             if (self.buffered) {
                 self.stopRender(checkReady);
-                self.events.fire(Events.READY);
+                self.events.fire(Events.READY, null, true);
             }
         }
 
@@ -3490,7 +3494,7 @@ class Video extends Component {
             self.loaded.start = bf.start(range) / self.element.duration;
             self.loaded.end = bf.end(range) / self.element.duration;
             self.loaded.percent = self.loaded.end - self.loaded.start;
-            self.events.fire(Events.PROGRESS, self.loaded);
+            self.events.fire(Events.PROGRESS, self.loaded, true);
         }
 
         this.play = () => {
@@ -3731,10 +3735,10 @@ class Scroll extends Component {
             Stage.bind('wheel', scroll);
             if (self.hitObject) self.hitObject.bind('touchstart', e => e.preventDefault());
             const input = self.hitObject ? new Interaction(self.hitObject) : Mouse.input;
-            input.events.add(Interaction.START, down);
-            input.events.add(Interaction.DRAG, drag);
-            input.events.add(Interaction.END, up);
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(input, Interaction.START, down);
+            self.events.add(input, Interaction.DRAG, drag);
+            self.events.add(input, Interaction.END, up);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -3871,10 +3875,10 @@ class Slide extends Component {
 
         function addListeners() {
             Stage.bind('wheel', scroll);
-            Mouse.input.events.add(Interaction.START, down);
-            Mouse.input.events.add(Interaction.DRAG, drag);
-            Stage.events.add(Events.KEYBOARD_DOWN, keyPress);
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Mouse.input, Interaction.START, down);
+            self.events.add(Mouse.input, Interaction.DRAG, drag);
+            self.events.add(Events.KEYBOARD_DOWN, keyPress);
+            self.events.add(Events.RESIZE, resize);
             resize();
         }
 
@@ -3951,7 +3955,7 @@ class Slide extends Component {
                 self.direction.y = self.delta.y < 0 ? -1 : 1;
                 event.index = self.index;
                 event.direction = self.direction;
-                self.events.fire(Events.UPDATE, event);
+                self.events.fire(Events.UPDATE, event, true);
             }
         }
 
@@ -4028,7 +4032,7 @@ class SlideVideo extends Component {
         }
 
         function error() {
-            self.events.fire(Events.ERROR);
+            self.events.fire(Events.ERROR, null, true);
         }
 
         function ready() {
@@ -4039,7 +4043,7 @@ class SlideVideo extends Component {
 
         function playing() {
             self.playing = true;
-            self.events.fire(Events.READY);
+            self.events.fire(Events.READY, null, true);
         }
 
         function pause() {
@@ -4098,12 +4102,12 @@ class SlideLoader extends Component {
 
         function slideLoaded() {
             self.percent = ++loaded / self.list.length;
-            self.events.fire(Events.PROGRESS, { percent: self.percent });
+            self.events.fire(Events.PROGRESS, { percent: self.percent }, true);
             if (loaded === self.list.length) complete();
         }
 
         function complete() {
-            self.events.fire(Events.COMPLETE);
+            self.events.fire(Events.COMPLETE, null, true);
             if (callback) callback();
         }
     }
@@ -4491,141 +4495,133 @@ class Vector3 {
 
 /* global THREE */
 
-const Utils3D = new ( // Singleton pattern (IICE)
-
 class Utils3D {
 
-    constructor() {
-        this.PATH = '';
-        const textures = {};
-        let objectLoader, geomLoader, bufferGeomLoader;
+    static decompose(local, world) {
+        local.matrixWorld.decompose(world.position, world.quaternion, world.scale);
+    }
 
-        this.decompose = (local, world) => {
-            local.matrixWorld.decompose(world.position, world.quaternion, world.scale);
+    static createDebug(size = 40, color) {
+        const geom = new THREE.IcosahedronGeometry(size, 1),
+            mat = color ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshNormalMaterial();
+        return new THREE.Mesh(geom, mat);
+    }
+
+    static createRT(width, height) {
+        const params = {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter,
+            format: THREE.RGBAFormat,
+            stencilBuffer: false
         };
+        return new THREE.WebGLRenderTarget(width, height, params);
+    }
 
-        this.createDebug = (size = 40, color) => {
-            const geom = new THREE.IcosahedronGeometry(size, 1),
-                mat = color ? new THREE.MeshBasicMaterial({ color }) : new THREE.MeshNormalMaterial();
-            return new THREE.Mesh(geom, mat);
-        };
-
-        this.createRT = (width, height) => {
-            const params = {
-                minFilter: THREE.LinearFilter,
-                magFilter: THREE.LinearFilter,
-                format: THREE.RGBAFormat,
-                stencilBuffer: false
-            };
-            return new THREE.WebGLRenderTarget(width, height, params);
-        };
-
-        this.getTexture = src => {
-            if (!textures[src]) {
-                const img = Assets.createImage(this.PATH + src),
-                    texture = new THREE.Texture(img);
-                img.onload = () => {
-                    texture.needsUpdate = true;
-                    if (texture.onload) {
-                        texture.onload();
-                        texture.onload = null;
-                    }
-                    if (!THREE.Math.isPowerOfTwo(img.width * img.height)) texture.minFilter = THREE.LinearFilter;
-                };
-                textures[src] = texture;
-            }
-            return textures[src];
-        };
-
-        this.setInfinity = v => {
-            const inf = Number.POSITIVE_INFINITY;
-            v.set(inf, inf, inf);
-            return v;
-        };
-
-        this.freezeMatrix = mesh => {
-            mesh.matrixAutoUpdate = false;
-            mesh.updateMatrix();
-        };
-
-        this.getCubemap = src => {
-            const path = 'cube_' + (Array.isArray(src) ? src[0] : src);
-            if (!textures[path]) {
-                const images = [];
-                for (let i = 0; i < 6; i++) {
-                    const img = Assets.createImage(this.PATH + (Array.isArray(src) ? src[i] : src));
-                    images.push(img);
-                    img.onload = () => textures[path].needsUpdate = true;
+    static getTexture(src) {
+        if (!this.textures) this.textures = {};
+        if (!this.textures[src]) {
+            const img = Assets.createImage(Assets.CDN + src),
+                texture = new THREE.Texture(img);
+            img.onload = () => {
+                texture.needsUpdate = true;
+                if (texture.onload) {
+                    texture.onload();
+                    texture.onload = null;
                 }
-                textures[path] = new THREE.Texture(images);
-                textures[path].minFilter = THREE.LinearFilter;
+                if (!THREE.Math.isPowerOfTwo(img.width * img.height)) texture.minFilter = THREE.LinearFilter;
+            };
+            this.textures[src] = texture;
+        }
+        return this.textures[src];
+    }
+
+    static setInfinity(v) {
+        const inf = Number.POSITIVE_INFINITY;
+        v.set(inf, inf, inf);
+        return v;
+    }
+
+    static freezeMatrix(mesh) {
+        mesh.matrixAutoUpdate = false;
+        mesh.updateMatrix();
+    }
+
+    static getCubemap(src) {
+        const path = 'cube_' + (Array.isArray(src) ? src[0] : src);
+        if (!this.textures) this.textures = {};
+        if (!this.textures[path]) {
+            const images = [];
+            for (let i = 0; i < 6; i++) {
+                const img = Assets.createImage(Assets.CDN + (Array.isArray(src) ? src[i] : src));
+                images.push(img);
+                img.onload = () => this.textures[path].needsUpdate = true;
             }
-            return textures[path];
-        };
+            this.textures[path] = new THREE.Texture(images);
+            this.textures[path].minFilter = THREE.LinearFilter;
+        }
+        return this.textures[path];
+    }
 
-        this.loadObject = data => {
-            if (!objectLoader) objectLoader = new THREE.ObjectLoader();
-            return objectLoader.parse(data);
-        };
+    static loadObject(data) {
+        if (!this.objectLoader) this.objectLoader = new THREE.ObjectLoader();
+        return this.objectLoader.parse(data);
+    }
 
-        this.loadGeometry = data => {
-            if (!geomLoader) geomLoader = new THREE.JSONLoader();
-            if (!bufferGeomLoader) bufferGeomLoader = new THREE.BufferGeometryLoader();
-            if (data.type === 'BufferGeometry') return bufferGeomLoader.parse(data);
-            else return geomLoader.parse(data.data).geometry;
-        };
+    static loadGeometry(data) {
+        if (!this.geomLoader) this.geomLoader = new THREE.JSONLoader();
+        if (!this.bufferGeomLoader) this.bufferGeomLoader = new THREE.BufferGeometryLoader();
+        if (data.type === 'BufferGeometry') return this.bufferGeomLoader.parse(data);
+        else return this.geomLoader.parse(data.data).geometry;
+    }
 
-        this.disposeAllTextures = () => {
-            for (let key in textures) textures[key].dispose();
-        };
+    static disposeAllTextures() {
+        for (let key in this.textures) this.textures[key].dispose();
+    }
 
-        this.loadBufferGeometry = data => {
-            const geometry = new THREE.BufferGeometry();
-            if (data.data) data = data.data;
-            geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
-            geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal || data.position.length), 3));
-            geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv || data.position.length / 3 * 2), 2));
-            return geometry;
-        };
+    static loadBufferGeometry(data) {
+        const geometry = new THREE.BufferGeometry();
+        if (data.data) data = data.data;
+        geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
+        geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal || data.position.length), 3));
+        geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv || data.position.length / 3 * 2), 2));
+        return geometry;
+    }
 
-        this.loadSkinnedGeometry = data => {
-            const geometry = new THREE.BufferGeometry();
-            geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
-            geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal), 3));
-            geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv), 2));
-            geometry.addAttribute('skinIndex', new THREE.BufferAttribute(new Float32Array(data.skinIndices), 4));
-            geometry.addAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(data.skinWeights), 4));
-            geometry.bones = data.bones;
-            return geometry;
-        };
+    static loadSkinnedGeometry(data) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(data.position), 3));
+        geometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(data.normal), 3));
+        geometry.addAttribute('uv', new THREE.BufferAttribute(new Float32Array(data.uv), 2));
+        geometry.addAttribute('skinIndex', new THREE.BufferAttribute(new Float32Array(data.skinIndices), 4));
+        geometry.addAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(data.skinWeights), 4));
+        geometry.bones = data.bones;
+        return geometry;
+    }
 
-        this.loadCurve = data => {
-            const points = [];
-            for (let i = 0; i < data.length; i += 3) points.push(new THREE.Vector3(data[i + 0], data[i + 1], data[i + 2]));
-            return new THREE.CatmullRomCurve3(points);
-        };
+    static loadCurve(data) {
+        const points = [];
+        for (let i = 0; i < data.length; i += 3) points.push(new THREE.Vector3(data[i + 0], data[i + 1], data[i + 2]));
+        return new THREE.CatmullRomCurve3(points);
+    }
 
-        this.setLightCamera = (light, size, near, far, texture) => {
-            light.shadow.camera.left = -size;
-            light.shadow.camera.right = size;
-            light.shadow.camera.top = size;
-            light.shadow.camera.bottom = -size;
-            light.castShadow = true;
-            if (near) light.shadow.camera.near = near;
-            if (far) light.shadow.camera.far = far;
-            if (texture) light.shadow.mapSize.width = light.shadow.mapSize.height = texture;
-            light.shadow.camera.updateProjectionMatrix();
-        };
+    static setLightCamera(light, size, near, far, texture) {
+        light.shadow.camera.left = -size;
+        light.shadow.camera.right = size;
+        light.shadow.camera.top = size;
+        light.shadow.camera.bottom = -size;
+        light.castShadow = true;
+        if (near) light.shadow.camera.near = near;
+        if (far) light.shadow.camera.far = far;
+        if (texture) light.shadow.mapSize.width = light.shadow.mapSize.height = texture;
+        light.shadow.camera.updateProjectionMatrix();
+    }
 
-        this.getRepeatTexture = src => {
-            const texture = this.getTexture(src);
-            texture.onload = () => texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-            return texture;
-        };
+    static getRepeatTexture(src) {
+        const texture = this.getTexture(src);
+        texture.onload = () => texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        return texture;
     }
 }
-
-)(); // Singleton pattern (IICE)
 
 /**
  * Raycaster.
@@ -4784,7 +4780,7 @@ class Interaction3D {
         function triggerHover(action, mesh) {
             event.action = action;
             event.mesh = mesh;
-            self.events.fire(Interaction3D.HOVER, event);
+            self.events.fire(Interaction3D.HOVER, event, true);
             const i = self.meshes.indexOf(hoverTarget);
             if (self.meshCallbacks[i].hoverCallback) self.meshCallbacks[i].hoverCallback(event);
         }
@@ -4792,7 +4788,7 @@ class Interaction3D {
         function triggerClick(mesh) {
             event.action = 'click';
             event.mesh = mesh;
-            self.events.fire(Interaction3D.CLICK, event);
+            self.events.fire(Interaction3D.CLICK, event, true);
             const i = self.meshes.indexOf(clickTarget);
             if (self.meshCallbacks[i].clickCallback) self.meshCallbacks[i].clickCallback(event);
         }
@@ -5030,7 +5026,7 @@ class Effects extends Component {
         }
 
         function addListeners() {
-            Stage.events.add(Events.RESIZE, resize);
+            self.events.add(Events.RESIZE, resize);
         }
 
         function resize() {
