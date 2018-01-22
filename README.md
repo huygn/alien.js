@@ -144,6 +144,43 @@ class Main {
 new Main();
 ```
 
+### Example Static Class design pattern
+
+```js
+import { Events, Stage, StateDispatcher } from '../alien.js/src/Alien.js';
+
+class Data {
+
+    static init() {
+        const self = this;
+        this.dispatcher = new StateDispatcher(true);
+
+        addListeners();
+
+        function addListeners() {
+            Stage.events.add(self.dispatcher, Events.UPDATE, stateChange);
+        }
+
+        function stateChange(e) {
+            if (e.path !== '') self.setSlide(e);
+        }
+
+        this.setSlide = e => {
+            // ...
+        };
+    }
+}
+
+class Main {
+
+    constructor() {
+        Data.init();
+    }
+}
+
+new Main();
+```
+
 ### Quickstart
 
 To build a project, make sure you have [Node.js](https://nodejs.org/) installed (at least version 4).
